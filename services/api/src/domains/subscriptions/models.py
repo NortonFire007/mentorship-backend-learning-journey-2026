@@ -32,7 +32,7 @@ class Subscription(Base):
     
     # Enum for flight, hotel, package
     travel_type: Mapped[TravelType] = mapped_column(
-        Enum(TravelType, name="travel_type_enum"), 
+        Enum(TravelType, name="travel_type_enum", create_type=False), 
         nullable=False
     )
     
@@ -46,7 +46,7 @@ class Subscription(Base):
     # Financial data
     max_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     currency: Mapped[CurrencyEnum] = mapped_column(
-        Enum(CurrencyEnum, name="subs_currency_enum"),
+        Enum(CurrencyEnum, name="currency_enum", create_type=False),
         default=CurrencyEnum.USD,
         server_default=CurrencyEnum.USD.value
     )

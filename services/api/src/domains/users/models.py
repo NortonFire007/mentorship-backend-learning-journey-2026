@@ -26,9 +26,9 @@ class User(Base):
     # Optional telegram ID for future notifications
     telegram_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     
-    # Preferred currency enum
+    # Preferred currency enum (shared 'currency_enum' in DB)
     preferred_currency: Mapped[CurrencyEnum] = mapped_column(
-        Enum(CurrencyEnum, name="user_currency_enum"),
+        Enum(CurrencyEnum, name="currency_enum", create_type=False),
         default=CurrencyEnum.USD,
         server_default=CurrencyEnum.USD.value
     )
