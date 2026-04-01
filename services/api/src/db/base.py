@@ -7,3 +7,5 @@ class Base(AsyncAttrs, DeclarativeBase):
 
 
 # Import all models here for Alembic
+from src.domains.users.models import User
+from src.domains.subscriptions.models import Subscription
