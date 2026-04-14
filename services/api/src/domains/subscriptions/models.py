@@ -32,7 +32,12 @@ class Subscription(Base):
     
     # Enum for flight, hotel, package
     travel_type: Mapped[TravelType] = mapped_column(
-        Enum(TravelType, name="travel_type_enum", create_type=False), 
+        Enum(
+            TravelType, 
+            name="travel_type_enum", 
+            create_type=False,
+            values_callable=lambda obj: [item.value for item in obj]
+        ), 
         nullable=False
     )
     
