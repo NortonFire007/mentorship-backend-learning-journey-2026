@@ -8,7 +8,6 @@ from tests.factories import UserFactory, SubscriptionFactory
 async def test_list_subscriptions(client: AsyncClient, db_session: AsyncSession):
     """
     Test fetching and filtering the list of subscriptions.
-    Uses .acreate() for cleaner setup.
     """
     user1 = await UserFactory.acreate(db_session)
     user2 = await UserFactory.acreate(db_session)

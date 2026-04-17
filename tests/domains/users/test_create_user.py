@@ -29,7 +29,6 @@ async def test_create_user_email_conflict(client: AsyncClient, db_session: Async
     """
     Test creating a user with an already existing email returns 409.
     """
-    # Setup: Add a user directly to DB using .acreate()
     await UserFactory.acreate(db_session, email="existing@example.com")
 
     # Action: Try creating another user with the same email

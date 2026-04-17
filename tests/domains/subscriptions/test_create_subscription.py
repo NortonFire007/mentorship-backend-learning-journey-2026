@@ -9,7 +9,6 @@ from tests.factories import UserFactory
 async def test_create_subscription_success(client: AsyncClient, db_session: AsyncSession):
     """
     Test creating a new subscription for an existing user.
-    Uses UserFactory.acreate for professional async setup.
     """
     user = await UserFactory.acreate(db_session)
 
