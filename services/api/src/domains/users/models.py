@@ -20,13 +20,10 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     surname: Mapped[str] = mapped_column(String(100), nullable=False)
     
-    # Validated via EmailStr in Pydantic, stored as string in DB
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     
-    # Optional telegram ID for future notifications
     telegram_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     
-    # Preferred currency enum (shared 'currency_enum' in DB)
     preferred_currency: Mapped[CurrencyEnum] = mapped_column(
         Enum(CurrencyEnum, name="currency_enum", create_type=False),
         default=CurrencyEnum.USD,

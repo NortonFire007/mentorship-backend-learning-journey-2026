@@ -44,8 +44,6 @@ class SubscriptionCreate(SubscriptionBase):
 class SubscriptionUpdate(BaseModel):
     """
     Schema for updating an existing subscription. 
-    Validation of cross-field dates (start vs end) is handled in the Service Layer
-    to correctly merge with existing DB state.
     """
     origin: str | None = Field(default=None, max_length=255)
     destination: str | None = Field(default=None, min_length=2, max_length=255)
@@ -60,7 +58,6 @@ class SubscriptionUpdate(BaseModel):
 class SubscriptionRead(SubscriptionBase):
     """
     Schema for reading subscription data. 
-    Used for serialization of established database records.
     """
     id: uuid.UUID
     user_id: uuid.UUID

@@ -24,10 +24,8 @@ class Subscription(Base):
         nullable=False
     )
     
-    # Origin location (optional/nullable)
     origin: Mapped[str | None] = mapped_column(String(255), nullable=True)
     
-    # Destination location (e.g., "Bulgaria" or "Spain - Madrid, Valencia, Barcelona")
     destination: Mapped[str] = mapped_column(String(255), nullable=False)
     
     # Enum for flight, hotel, package
