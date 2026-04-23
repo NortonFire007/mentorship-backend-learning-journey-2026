@@ -36,3 +36,23 @@ async def test_list_subscriptions(client: AsyncClient, db_session: AsyncSession)
     assert len(data) >= 2
     assert all(d["is_active"] is True for d in data)
     assert all(d["travel_type"] == "flight" for d in data)
+
+    # 4. Advanced filtering (min_price, max_price)
+    from datetime import date, timedelta
+    await SubscriptionFactory.acreate(
+        db_session, user=user1, travel_type=TravelType.PACKAGE, is_active=True,
+        min_price=100.0, max_price=500.0,
+        start_date=date.today(), end_date=date.today() + timedelta(days=7)
+    )
+    
+    response = await client.get("/api/v1/subscriptions/?min_price=200")
+    data = response.json()
+    assert response.status_code == 200
+    
+    response = await client.get("/api/v1/subscriptions/?max_price=50")
+    data = response.json()
+    assert response.status_code == 200
+
+    response = await client.get(f"/api/v1/subscriptions/?start_date_from={date.today()}&start_date_to={date.today() + timedelta(days=1)}")
+    data = response.json()
+    assert response.status_code == 200

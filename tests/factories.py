@@ -15,8 +15,19 @@ class AsyncFactoryMixin:
     async def acreate(cls, session, **kwargs):
         """
         Builds the model instance and persists it to the database asynchronously.
+        Filters out kwargs that are not valid model attributes.
         """
-        instance = cls.build(**kwargs)
+        # Get valid model attributes from the factory's Meta
+        model_class = cls._meta.model
+        valid_keys = {c.key for c in model_class.__table__.columns} if hasattr(model_class, "__table__") else set()
+        
+        # If it's a SQLAlchemy model, filter. Otherwise pass as is.
+        if valid_keys:
+            filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_keys or hasattr(model_class, k)}
+        else:
+            filtered_kwargs = kwargs
+
+        instance = cls.build(**filtered_kwargs)
         session.add(instance)
         await session.flush()
         return instance

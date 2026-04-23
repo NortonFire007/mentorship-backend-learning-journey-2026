@@ -65,3 +65,10 @@ class SubscriptionRead(SubscriptionBase):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class DestinationStatsRead(BaseModel):
+    """
+    Schema for aggregated destination popularity stats.
+    """
+    destination: str
+    subscription_count: int

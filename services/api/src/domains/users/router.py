@@ -2,7 +2,7 @@ import uuid
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.db.database import get_db
-from src.domains.users.schemas import UserCreate, UserRead, UserUpdate
+from src.domains.users.schemas import UserCreate, UserRead, UserUpdate, UserWithSubscriptionsRead, UserActiveCountRead
 from src.domains.users.service import UserService
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -19,17 +19,37 @@ async def create_user_endpoint(
     service = UserService(db)
     return await service.create_user(user_in)
 
-@router.get("/{user_id}", response_model=UserRead)
+@router.get("/stats/active-counts", response_model=list[UserActiveCountRead])
+async def get_active_subscription_counts_endpoint(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Retrieve all users along with the count of their active subscriptions.
+    """
+    service = UserService(db)
+    return await service.get_active_subscription_counts()
+
+@router.get("/", response_model=list[UserWithSubscriptionsRead])
+async def list_users_endpoint(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Retrieve a list of all users.
+    """
+    service = UserService(db)
+    return await service.get_all_users_with_subscriptions()
+
+@router.get("/{user_id}", response_model=UserWithSubscriptionsRead)
 async def get_user_endpoint(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Retrieve user profile details by ID.
+    Retrieve user profile details by ID, including their subscriptions.
     Returns 404 if user not found.
     """
     service = UserService(db)
-    return await service.get_user_by_id(user_id)
+    return await service.get_user_by_id_with_subscriptions(user_id)
 
 @router.patch("/{user_id}", response_model=UserRead)
 async def update_user_endpoint(
