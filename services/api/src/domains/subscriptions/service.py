@@ -1,4 +1,6 @@
 import uuid
+from datetime import date
+from decimal import Decimal
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.domains.subscriptions.repository import SubscriptionRepository
@@ -36,12 +38,19 @@ class SubscriptionService:
         self, 
         user_id: uuid.UUID | None = None, 
         is_active: bool | None = None,
-        travel_type: TravelType | None = None
+        travel_type: TravelType | None = None,
+        start_date_from: date | None = None,
+        start_date_to: date | None = None,
+        min_price: Decimal | None = None,
+        max_price: Decimal | None = None
     ) -> list[Subscription]:
         """
         Retrieve a list of subscriptions based on filters.
         """
-        return await self.repository.list(user_id, is_active, travel_type)
+        return await self.repository.list(
+            user_id, is_active, travel_type, 
+            start_date_from, start_date_to, min_price, max_price
+        )
 
     async def get_subscription_by_id(self, sub_id: uuid.UUID) -> Subscription:
         """
@@ -85,3 +94,9 @@ class SubscriptionService:
         sub = await self.get_subscription_by_id(sub_id)
         await self.repository.delete(sub)
         await self.session.commit()
+
+    async def get_destination_stats(self) -> list[dict]:
+        """
+        Retrieve popular travel destinations and subscription counts.
+        """
+        return await self.repository.get_destination_stats()

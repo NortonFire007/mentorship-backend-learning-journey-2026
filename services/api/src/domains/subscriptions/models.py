@@ -10,6 +10,7 @@ from src.core.enums import TravelType, CurrencyEnum
 
 if TYPE_CHECKING:
     from src.domains.users.models import User
+    from src.domains.alerts.models import Alert
 
 class Subscription(Base):
     """
@@ -26,7 +27,7 @@ class Subscription(Base):
     
     origin: Mapped[str | None] = mapped_column(String(255), nullable=True)
     
-    destination: Mapped[str] = mapped_column(String(255), nullable=False)
+    destination: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
     
     # Enum for flight, hotel, package
     travel_type: Mapped[TravelType] = mapped_column(
@@ -47,14 +48,14 @@ class Subscription(Base):
     duration_days: Mapped[int | None] = mapped_column(nullable=True)
     
     # Financial data
-    max_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    max_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), index=True, nullable=False)
     currency: Mapped[CurrencyEnum] = mapped_column(
         Enum(CurrencyEnum, name="currency_enum", create_type=False),
         default=CurrencyEnum.USD,
         server_default=CurrencyEnum.USD.value
     )
     
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    is_active: Mapped[bool] = mapped_column(Boolean, index=True, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), 
         default=lambda: datetime.now(timezone.utc),
@@ -63,6 +64,7 @@ class Subscription(Base):
 
     # Relationships
     user: Mapped[User] = relationship(back_populates="subscriptions")
+    alerts: Mapped[list[Alert]] = relationship(back_populates="subscription", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Subscription(id={self.id}, user_id={self.user_id}, destination={self.destination})>"
