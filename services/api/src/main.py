@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from src.core.config import settings
 from src.domains.users.router import router as users_router
 from src.domains.subscriptions.router import router as subscriptions_router
+from src.domains.alerts.router import router as alerts_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -12,6 +13,7 @@ app = FastAPI(
 
 app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(subscriptions_router, prefix=settings.API_V1_STR)
+app.include_router(alerts_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def root():

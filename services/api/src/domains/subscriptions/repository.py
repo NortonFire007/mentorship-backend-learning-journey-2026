@@ -4,6 +4,7 @@ from typing import List, Tuple
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.domains.subscriptions.models import Subscription
+from src.domains.alerts.models import Alert
 from src.domains.subscriptions.schemas import SubscriptionCreate, SubscriptionUpdate
 from src.core.enums import TravelType
 
@@ -98,3 +99,26 @@ class SubscriptionRepository:
         """
         await self.session.delete(sub)
         await self.session.flush()
+
+    async def list_with_latest_alert(self, user_id: uuid.UUID) -> List[Tuple[Subscription, Alert | None]]:
+        """
+        Fetch all subscriptions for a user, each with its latest alert (if any).
+        """
+        # Subquery to get the latest alert for each subscription
+        latest_alert_subquery = (
+            select(Alert)
+            .distinct(Alert.subscription_id)
+            .order_by(Alert.subscription_id, Alert.created_at.desc())
+            .subquery()
+        )
+
+        # Join Subscription with the subquery
+        stmt = (
+            select(Subscription, latest_alert_subquery)
+            .outerjoin(latest_alert_subquery, Subscription.id == latest_alert_subquery.c.subscription_id)
+            .where(Subscription.user_id == user_id)
+            .order_by(Subscription.created_at.desc())
+        )
+
+        result = await self.session.execute(stmt)
+        return result.all()

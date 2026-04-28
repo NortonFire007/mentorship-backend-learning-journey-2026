@@ -6,7 +6,8 @@ from datetime import timedelta, date
 
 from src.domains.users.models import User
 from src.domains.subscriptions.models import Subscription
-from src.core.enums import TravelType, CurrencyEnum
+from src.domains.alerts.models import Alert
+from src.core.enums import TravelType, CurrencyEnum, AlertStatus
 
 fake = Faker()
 
@@ -69,3 +70,15 @@ class SubscriptionFactory(factory.Factory, AsyncFactoryMixin):
     max_price = Decimal("500.00")
     currency = CurrencyEnum.EUR
     is_active = True
+
+class AlertFactory(factory.Factory, AsyncFactoryMixin):
+    """
+    Factory for creating Alert instances.
+    """
+    class Meta:
+        model = Alert
+
+    id = factory.LazyFunction(uuid.uuid4)
+    subscription = factory.SubFactory(SubscriptionFactory)
+    price_found = factory.LazyFunction(lambda: Decimal(fake.random_int(min=100, max=1000)))
+    status = AlertStatus.SENT

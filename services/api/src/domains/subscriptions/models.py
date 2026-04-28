@@ -10,6 +10,7 @@ from src.core.enums import TravelType, CurrencyEnum
 
 if TYPE_CHECKING:
     from src.domains.users.models import User
+    from src.domains.alerts.models import Alert
 
 class Subscription(Base):
     """
@@ -63,6 +64,7 @@ class Subscription(Base):
 
     # Relationships
     user: Mapped[User] = relationship(back_populates="subscriptions")
+    alerts: Mapped[list[Alert]] = relationship(back_populates="subscription", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Subscription(id={self.id}, user_id={self.user_id}, destination={self.destination})>"
