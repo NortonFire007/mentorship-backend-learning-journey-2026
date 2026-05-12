@@ -1,9 +1,11 @@
 import uuid
+from datetime import date
 from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.db.database import get_db
-from src.domains.subscriptions.schemas import SubscriptionCreate, SubscriptionRead, SubscriptionUpdate
+from src.domains.subscriptions.schemas import SubscriptionCreate, SubscriptionRead, SubscriptionUpdate, DestinationStatsRead
 from src.domains.subscriptions.service import SubscriptionService
+from decimal import Decimal
 from src.core.enums import TravelType
 
 router = APIRouter(prefix="/subscriptions", tags=["Subscriptions"])
@@ -24,6 +26,10 @@ async def list_subscriptions_endpoint(
     user_id: uuid.UUID | None = Query(None, description="Filter results by specific user ID"),
     is_active: bool | None = Query(None, description="Filter results by subscription active status"),
     travel_type: TravelType | None = Query(None, description="Filter results by type of travel (flight, hotel, package)"),
+    start_date_from: date | None = Query(None, description="Filter results by start date (from)"),
+    start_date_to: date | None = Query(None, description="Filter results by start date (to)"),
+    min_price: Decimal | None = Query(None, description="Filter results by minimum price"),
+    max_price: Decimal | None = Query(None, description="Filter results by maximum price"),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -31,7 +37,10 @@ async def list_subscriptions_endpoint(
     Essential for the deal-finder worker to locate active alerts.
     """
     service = SubscriptionService(db)
-    return await service.list_subscriptions(user_id, is_active, travel_type)
+    return await service.list_subscriptions(
+        user_id, is_active, travel_type,
+        start_date_from, start_date_to, min_price, max_price
+    )
 
 @router.get("/{sub_id}", response_model=SubscriptionRead)
 async def get_subscription_endpoint(
@@ -66,3 +75,13 @@ async def delete_subscription_endpoint(
     """
     service = SubscriptionService(db)
     await service.hard_delete_subscription(sub_id)
+
+@router.get("/stats/destinations", response_model=list[DestinationStatsRead])
+async def get_destination_stats_endpoint(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Retrieve statistics on popular travel destinations based on subscriptions.
+    """
+    service = SubscriptionService(db)
+    return await service.get_destination_stats()

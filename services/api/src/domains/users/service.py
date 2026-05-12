@@ -58,3 +58,38 @@ class UserService:
         await self.session.commit()
         await self.session.refresh(updated_user)
         return updated_user
+
+    async def get_user_by_id_with_subscriptions(self, user_id: uuid.UUID) -> User:
+        """
+        Retrieve a user profile with eagerly loaded subscriptions.
+        """
+        user = await self.repository.get_by_id_with_subscriptions(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User with ID {user_id} not found"
+            )
+        return user
+
+    async def get_all_users_with_subscriptions(self) -> list[User]:
+        """
+        Retrieve all users with eagerly loaded subscriptions.
+        """
+        return await self.repository.get_all_with_subscriptions()
+
+    async def get_active_subscription_counts(self) -> list[dict]:
+        """
+        Retrieve active subscription counts for all users.
+        """
+        results = await self.repository.get_active_subscription_counts()
+        return [
+            {
+                "id": user.id, 
+                "name": user.name, 
+                "surname": user.surname, 
+                "email": user.email, 
+                "active_subscriptions_count": count
+            } 
+            for user, count in results
+        ]
+

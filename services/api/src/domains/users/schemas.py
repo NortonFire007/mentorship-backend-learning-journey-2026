@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, computed_field, ConfigDict
 from src.core.enums import CurrencyEnum
+from src.domains.subscriptions.schemas import SubscriptionRead
 
 class UserBase(BaseModel):
     """
@@ -43,3 +44,20 @@ class UserRead(UserBase):
         return f"{self.name} {self.surname}"
 
     model_config = ConfigDict(from_attributes=True)
+
+class UserWithSubscriptionsRead(UserRead):
+    """
+    Schema for reading user data along with their subscriptions.
+    """
+    subscriptions: list[SubscriptionRead] = []
+
+class UserActiveCountRead(BaseModel):
+    """
+    Schema for reading user data along with active subscriptions count.
+    """
+    id: uuid.UUID
+    name: str
+    surname: str
+    email: EmailStr
+    active_subscriptions_count: int
+

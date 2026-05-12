@@ -11,6 +11,7 @@ from src.core.config import settings
 from src.db.base import Base
 from src.domains.users.models import User
 from src.domains.subscriptions.models import Subscription
+from src.domains.alerts.models import Alert
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
