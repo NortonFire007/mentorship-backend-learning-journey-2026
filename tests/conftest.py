@@ -4,9 +4,23 @@ from typing import AsyncGenerator
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
+from unittest.mock import patch
+from taskiq import InMemoryBroker
+
+# Initialize InMemoryBroker for tests and patch globally before loading main application
+test_broker = InMemoryBroker()
+test_result_backend = test_broker.result_backend
+
+broker_patch = patch("src.core.taskiq.broker", test_broker)
+result_backend_patch = patch("src.core.taskiq.result_backend", test_result_backend)
+
+broker_patch.start()
+result_backend_patch.start()
+
 from src.main import app
 from src.core.config import settings
 from src.db.database import get_db
+
 
 @pytest_asyncio.fixture(scope="session")
 async def db_engine():

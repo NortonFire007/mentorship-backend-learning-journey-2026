@@ -3,6 +3,7 @@ services:
   postgres:
     image: postgres:17-alpine
     container_name: mentorship_db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -17,6 +18,22 @@ services:
           "CMD-SHELL",
           "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mentorship_db}",
         ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Message Broker
+  redis:
+    image: redis:7-alpine
+    container_name: mentorship_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -46,6 +63,7 @@ services:
       context: .
       dockerfile: services/api/Dockerfile
     container_name: mentorship_api
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,6 +76,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-mentorship_db}
       DEBUG: "True"
+      REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
     volumes:
@@ -66,5 +85,36 @@ services:
       - .env
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 
+  # Taskiq Background Worker
+  worker:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    container_name: mentorship_worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_SERVER: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-mentorship_db}
+      REDIS_URL: redis://redis:6379/0
+      TASKIQ_DASHBOARD_URL: http://api:8000/admin
+    volumes:
+      - ./services/api/src:/app/src
+    env_file:
+      - .env
+    command: taskiq worker src.core.taskiq:broker --fs-discover --reload
+
 volumes:
   postgres_data:
+  redis_data:
+
+
