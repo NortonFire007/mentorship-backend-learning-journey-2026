@@ -21,6 +21,16 @@ async def create_subscription_endpoint(
     service = SubscriptionService(db)
     return await service.create_subscription(sub_in)
 
+@router.post("/import", status_code=status.HTTP_202_ACCEPTED)
+async def trigger_import_endpoint(source_name: str = "booking"):
+    """
+    Trigger a background task to import external data.
+    """
+    from src.domains.subscriptions.tasks import import_external_subscriptions_task
+    
+    task = await import_external_subscriptions_task.kiq(source_name)
+    return {"message": "Import task started", "task_id": task.task_id}
+
 @router.get("/", response_model=list[SubscriptionRead])
 async def list_subscriptions_endpoint(
     user_id: uuid.UUID | None = Query(None, description="Filter results by specific user ID"),

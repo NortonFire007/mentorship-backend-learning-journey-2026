@@ -1,19 +1,44 @@
 import datetime
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from taskiq_dashboard import TaskiqDashboard
+
 from src.core.config import settings
+from src.core.taskiq import broker
 from src.domains.users.router import router as users_router
 from src.domains.subscriptions.router import router as subscriptions_router
 from src.domains.alerts.router import router as alerts_router
+from src.domains.tasks.router import router as tasks_router
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start taskiq broker connection
+    if not broker.is_worker_process:
+        await broker.startup()
+    yield
+    # Close taskiq broker connection
+    if not broker.is_worker_process:
+        await broker.shutdown()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    debug=settings.DEBUG
+    debug=settings.DEBUG,
+    lifespan=lifespan
 )
+
+# Initialize and mount Taskiq Dashboard
+dashboard = TaskiqDashboard(
+    api_token=settings.TASKIQ_DASHBOARD_TOKEN,
+    storage_type="sqlite",
+    broker=broker,
+)
+app.mount(settings.TASKIQ_DASHBOARD_PATH, dashboard.application)
 
 app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(subscriptions_router, prefix=settings.API_V1_STR)
 app.include_router(alerts_router, prefix=settings.API_V1_STR)
+app.include_router(tasks_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def root():
