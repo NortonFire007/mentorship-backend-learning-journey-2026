@@ -1,7 +1,7 @@
 import uuid
 import dataclasses
 from datetime import datetime
-from taskiq import AsyncKicker
+from taskiq.kicker import AsyncKicker
 from taskiq_aio_pika import AioPikaBroker
 from src.core.events.base import Event, EventPublisher
 
@@ -24,7 +24,8 @@ class TaskiqRabbitMQEventPublisher(EventPublisher):
                 event_dict[key] = str(value)
 
         kicker = AsyncKicker(
-            broker=self.broker,
             task_name=routing_key,
+            broker=self.broker,
+            labels={},
         )
         await kicker.kiq(event_dict)

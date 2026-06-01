@@ -6,8 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.taskiq import broker
-from src.db.database import get_db
+from src.core.taskiq import rabbitmq_broker
+from src.core.events.idempotency import idempotent_event
 from src.core.enums import TravelType, CurrencyEnum
+from src.db.database import get_db
 from src.domains.users.models import User
 from src.domains.subscriptions.models import Subscription
 
@@ -136,4 +138,18 @@ async def import_external_subscriptions_task(
         "imported": imported_count,
         "skipped": skipped_count
     }
+
+
+@rabbitmq_broker.task(
+    task_name="subscriptions.subscription.created",
+    retry_on_error=True,
+    max_retries=3,
+)
+@idempotent_event
+async def process_subscription_created_event(event_dict: dict) -> None:
+    """
+    Consumer task for processing SubscriptionCreatedEvent.
+    Deduplicated using Redis via the idempotent_event decorator.
+    """
+    logger.info(f"Successfully processed subscription created event: {event_dict}")
 

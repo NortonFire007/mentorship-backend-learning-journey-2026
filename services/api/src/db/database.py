@@ -45,17 +45,22 @@ async def get_db(
     """
     async with AsyncSessionLocal() as session:
         dispatcher = EventDispatcher(publisher)
+        dispatcher.setup_session(session)
         try:
             yield session
             
-            events_to_publish = dispatcher.extract_events(session)
+            # Combine dynamically intercepted commit events with any remaining events
+            events_to_publish = getattr(session, "_events_to_publish", [])
+            events_to_publish.extend(dispatcher.extract_events(session))
             
-            await session.commit()
+            if session.is_active:
+                await session.commit()
             
             await dispatcher.publish_events(events_to_publish)
             
         except Exception as e:
-            await session.rollback()
+            if session.is_active:
+                await session.rollback()
             raise e
         finally:
             await session.close()
@@ -74,17 +79,21 @@ async def db_transaction(
         
     async with AsyncSessionLocal() as session:
         dispatcher = EventDispatcher(publisher)
+        dispatcher.setup_session(session)
         try:
             yield session
             
-            events_to_publish = dispatcher.extract_events(session)
+            events_to_publish = getattr(session, "_events_to_publish", [])
+            events_to_publish.extend(dispatcher.extract_events(session))
 
-            await session.commit()
+            if session.is_active:
+                await session.commit()
 
             await dispatcher.publish_events(events_to_publish)
             
         except Exception as e:
-            await session.rollback()
+            if session.is_active:
+                await session.rollback()
             raise e
         finally:
             await session.close()

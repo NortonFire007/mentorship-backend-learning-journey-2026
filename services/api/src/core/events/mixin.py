@@ -5,9 +5,6 @@ class EventRecordableMixin:
     """
     Mixin adding event collection capability to entities.
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._domain_events: List[Event] = []
 
     def record_event(self, event: Event) -> None:
         """

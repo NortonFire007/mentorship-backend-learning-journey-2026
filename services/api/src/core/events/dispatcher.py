@@ -10,6 +10,27 @@ class EventDispatcher:
     def __init__(self, publisher: EventPublisher):
         self.publisher = publisher
 
+    def setup_session(self, session: AsyncSession) -> None:
+        """
+        Dynamically intercepts the session's commit method to extract domain
+        events immediately before the transaction is committed (e.g. by a service method).
+        This guarantees events are collected before the session expires them.
+        """
+        if hasattr(session, "_events_to_publish"):
+            return
+            
+        session._events_to_publish = []
+        original_commit = session.commit
+
+        async def intercept_commit(*args, **kwargs):
+            # Extract events BEFORE commit
+            events = self.extract_events(session)
+            session._events_to_publish.extend(events)
+            # Proceed with original commit
+            return await original_commit(*args, **kwargs)
+
+        session.commit = intercept_commit
+
     def extract_events(self, session: AsyncSession) -> List[Event]:
         """
         Scans all dirty/loaded models in a session and extracts events BEFORE commit.
