@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from taskiq_dashboard import TaskiqDashboard
 
 from src.core.config import settings
-from src.core.taskiq import broker
+from src.core.taskiq import broker, rabbitmq_broker
 from src.domains.users.router import router as users_router
 from src.domains.subscriptions.router import router as subscriptions_router
 from src.domains.alerts.router import router as alerts_router
@@ -12,13 +12,17 @@ from src.domains.tasks.router import router as tasks_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Start taskiq broker connection
+    # Start taskiq broker connections
     if not broker.is_worker_process:
         await broker.startup()
+    if not rabbitmq_broker.is_worker_process:
+        await rabbitmq_broker.startup()
     yield
-    # Close taskiq broker connection
+    # Close taskiq broker connections
     if not broker.is_worker_process:
         await broker.shutdown()
+    if not rabbitmq_broker.is_worker_process:
+        await rabbitmq_broker.shutdown()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
