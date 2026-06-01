@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
+    # RabbitMQ
+    RABBITMQ_URL: str = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
+
     # Taskiq Configurations
     TASKIQ_DASHBOARD_TOKEN: str = os.getenv("TASKIQ_DASHBOARD_TOKEN", "supersecret")
     TASKIQ_DASHBOARD_PATH: str = os.getenv("TASKIQ_DASHBOARD_PATH", "/admin")
