@@ -67,4 +67,6 @@ class EventDispatcher:
         name = event.__class__.__name__
         if name == "SubscriptionCreatedEvent":
             return "subscriptions.subscription.created"
+        elif name == "DigestRequestedEvent":
+            return "notifications.digest.requested"
         return "events.unknown"
