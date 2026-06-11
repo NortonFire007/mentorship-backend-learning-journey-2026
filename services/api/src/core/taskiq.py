@@ -1,5 +1,6 @@
 import taskiq_fastapi
 from taskiq_redis import RedisStreamBroker, RedisAsyncResultBackend
+from taskiq_aio_pika import AioPikaBroker
 from taskiq import SimpleRetryMiddleware
 from taskiq_dashboard import DashboardMiddleware
 
@@ -25,6 +26,16 @@ broker.add_middlewares(
     )
 )
 
-# 3. Initialize the FastAPI integration
+# 3. Use AioPikaBroker for RabbitMQ Event Bus
+rabbitmq_broker = AioPikaBroker(
+    url=settings.RABBITMQ_URL,
+).with_result_backend(result_backend)
+
+rabbitmq_broker.add_middlewares(
+    SimpleRetryMiddleware(default_retry_count=3),
+)
+
+# 4. Initialize the FastAPI integration
 taskiq_fastapi.init(broker, "src.main:app")
+taskiq_fastapi.init(rabbitmq_broker, "src.main:app")
 

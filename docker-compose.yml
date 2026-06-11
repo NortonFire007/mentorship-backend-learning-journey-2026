@@ -38,6 +38,20 @@ services:
       timeout: 5s
       retries: 5
 
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: mentorship_rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Short-lived Migrator Container
   migrator:
     build:
@@ -69,6 +83,8 @@ services:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
     environment:
       POSTGRES_SERVER: postgres
       POSTGRES_PORT: 5432
@@ -77,6 +93,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-mentorship_db}
       DEBUG: "True"
       REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     ports:
       - "8000:8000"
     volumes:
@@ -97,6 +114,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
       migrator:
         condition: service_completed_successfully
     environment:
@@ -106,6 +125,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-mentorship_db}
       REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
       TASKIQ_DASHBOARD_URL: http://api:8000/admin
     volumes:
       - ./services/api/src:/app/src

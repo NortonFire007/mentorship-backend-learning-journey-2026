@@ -7,6 +7,7 @@ from src.domains.subscriptions.models import Subscription
 from src.domains.alerts.models import Alert
 from src.domains.subscriptions.schemas import SubscriptionCreate, SubscriptionUpdate
 from src.core.enums import TravelType
+from src.core.events.events import SubscriptionCreatedEvent
 
 class SubscriptionRepository:
 
@@ -78,6 +79,16 @@ class SubscriptionRepository:
         Create a new subscription record.
         """
         sub = Subscription(**sub_data.model_dump())
+        if not sub.id:
+            sub.id = uuid.uuid4()
+            
+        sub.record_event(
+            SubscriptionCreatedEvent(
+                subscription_id=sub.id,
+                user_id=sub.user_id,
+                destination=sub.destination
+            )
+        )
         self.session.add(sub)
         await self.session.flush()
         return sub

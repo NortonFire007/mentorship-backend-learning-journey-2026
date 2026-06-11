@@ -61,10 +61,41 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """
     Provides an httpx.AsyncClient configured to bypass FastAPI dependencies
-    and inject our isolated transaction `db_session`.
+    and inject our isolated transaction `db_session`, while preserving the
+    Unit of Work event-dispatching lifecycle.
     """
     async def override_get_db():
-        yield db_session
+        from src.db.database import get_event_publisher
+        from src.core.events.dispatcher import EventDispatcher
+        
+        # Resolve the active event publisher (which may be overridden in tests)
+        override = app.dependency_overrides.get(get_event_publisher)
+        if override:
+            import inspect
+            if inspect.iscoroutinefunction(override):
+                publisher = await override()
+            else:
+                publisher = override()
+        else:
+            publisher = await get_event_publisher()
+            
+        dispatcher = EventDispatcher(publisher)
+        dispatcher.setup_session(db_session)
+        try:
+            yield db_session
+            
+            # Combine dynamically intercepted commit events with any remaining events
+            events_to_publish = getattr(db_session, "_events_to_publish", [])
+            events_to_publish.extend(dispatcher.extract_events(db_session))
+            
+            if db_session.is_active:
+                await db_session.commit()
+            
+            await dispatcher.publish_events(events_to_publish)
+        except Exception as e:
+            if db_session.is_active:
+                await db_session.rollback()
+            raise e
         
     app.dependency_overrides[get_db] = override_get_db
     
