@@ -120,3 +120,12 @@ class RefreshTokenRepository:
             .values(revoked_at=datetime.now(timezone.utc))
         )
         await self.session.execute(stmt)
+
+    async def get_jtis_by_family(self, family_id: uuid.UUID) -> list[uuid.UUID]:
+        """
+        Retrieve all JTIs belonging to a specific token family.
+        """
+        stmt = select(RefreshToken.jti).where(RefreshToken.family_id == family_id)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+

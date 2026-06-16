@@ -182,3 +182,146 @@ async def test_auth_service_login_rate_limit(db_session: AsyncSession):
 
     assert exc_info.value.status_code == 429
     assert "Rate limit exceeded" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_auth_service_refresh_success(db_session: AsyncSession):
+    from unittest.mock import AsyncMock
+    service = AuthService(db_session)
+    reg_data = RegisterRequest(
+        name="Refresh",
+        surname="User",
+        email="refresh.success@example.com",
+        password="SecurePassword123!"
+    )
+    await service.register(reg_data)
+
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+
+    token_pair = await service.login(
+        email="refresh.success@example.com",
+        password="SecurePassword123!",
+        redis_client=mock_redis
+    )
+
+    # Refresh
+    new_pair = await service.refresh(
+        refresh_token_str=token_pair.refresh_token,
+        redis_client=mock_redis
+    )
+
+    assert new_pair.access_token is not None
+    assert new_pair.refresh_token is not None
+    assert new_pair.refresh_token != token_pair.refresh_token
+
+    # Verify old token is marked as used
+    from src.core.security.jwt import decode_token
+    from src.domains.auth.repository import RefreshTokenRepository
+    import uuid
+    
+    old_payload = decode_token(token_pair.refresh_token)
+    repo = RefreshTokenRepository(db_session)
+    old_db_token = await repo.get_by_jti(uuid.UUID(old_payload["jti"]))
+    assert old_db_token.is_used is True
+    mock_redis.set.assert_called()  # pending cached result and blacklist
+
+
+@pytest.mark.asyncio
+async def test_auth_service_refresh_reuse_post_grace_period(db_session: AsyncSession):
+    from unittest.mock import AsyncMock
+    from datetime import datetime, timezone, timedelta
+    from src.core.security.jwt import decode_token
+    from src.domains.auth.repository import RefreshTokenRepository
+    import uuid
+
+    service = AuthService(db_session)
+    reg_data = RegisterRequest(
+        name="Reuse",
+        surname="User",
+        email="refresh.reuse@example.com",
+        password="SecurePassword123!"
+    )
+    await service.register(reg_data)
+
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+
+    token_pair = await service.login(
+        email="refresh.reuse@example.com",
+        password="SecurePassword123!",
+        redis_client=mock_redis
+    )
+
+    # First refresh (valid rotation)
+    await service.refresh(
+        refresh_token_str=token_pair.refresh_token,
+        redis_client=mock_redis
+    )
+
+    # Manually backdate rotated_at in DB past grace period
+    payload = decode_token(token_pair.refresh_token)
+    jti = uuid.UUID(payload["jti"])
+    repo = RefreshTokenRepository(db_session)
+    db_token = await repo.get_by_jti(jti)
+    db_token.rotated_at = datetime.now(timezone.utc) - timedelta(seconds=35)
+    await db_session.commit()
+
+    # Second refresh attempt should trigger reuse detection
+    with pytest.raises(HTTPException) as exc_info:
+        await service.refresh(
+            refresh_token_str=token_pair.refresh_token,
+            redis_client=mock_redis
+        )
+
+    assert exc_info.value.status_code == 401
+    assert "session compromised" in exc_info.value.detail
+
+    # Verify family is revoked
+    db_token = await repo.get_by_jti(jti)
+    assert db_token.revoked_at is not None
+
+
+@pytest.mark.asyncio
+async def test_auth_service_refresh_reuse_within_grace_period(db_session: AsyncSession):
+    from unittest.mock import AsyncMock
+    from src.core.security.jwt import decode_token
+    from src.domains.auth.repository import RefreshTokenRepository
+    import uuid
+
+    service = AuthService(db_session)
+    reg_data = RegisterRequest(
+        name="Grace",
+        surname="User",
+        email="refresh.grace@example.com",
+        password="SecurePassword123!"
+    )
+    await service.register(reg_data)
+
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+
+    token_pair = await service.login(
+        email="refresh.grace@example.com",
+        password="SecurePassword123!",
+        redis_client=mock_redis
+    )
+
+    # First refresh
+    first_new_pair = await service.refresh(
+        refresh_token_str=token_pair.refresh_token,
+        redis_client=mock_redis
+    )
+
+    # Second refresh within grace period (rotated_at is current time)
+    second_new_pair = await service.refresh(
+        refresh_token_str=token_pair.refresh_token,
+        redis_client=mock_redis
+    )
+
+    # Should return the child token pair
+    assert second_new_pair.access_token is not None
+    # Compare refresh JTIs to ensure they point to same child
+    child_payload1 = decode_token(first_new_pair.refresh_token)
+    child_payload2 = decode_token(second_new_pair.refresh_token)
+    assert child_payload1["jti"] == child_payload2["jti"]

@@ -230,3 +230,177 @@ async def test_login_router_rate_limit(client: AsyncClient):
     assert response.status_code == 429
     assert "Rate limit exceeded" in response.json()["detail"]
     app.dependency_overrides.pop(get_redis, None)
+
+
+@pytest.mark.asyncio
+async def test_refresh_router_success(client: AsyncClient):
+    from unittest.mock import AsyncMock
+    from src.main import app
+    from src.domains.auth.dependencies import get_redis
+    import re
+
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+    app.dependency_overrides[get_redis] = lambda: mock_redis
+
+    email = "refresh.router.success@example.com"
+    password = "StrongPassword123!"
+
+    # Register
+    await client.post("/api/v1/auth/register", json={
+        "name": "Refresh",
+        "surname": "Router",
+        "email": email,
+        "password": password
+    })
+
+    # Login
+    login_res = await client.post("/api/v1/auth/login", json={
+        "email": email,
+        "password": password
+    })
+    cookie_header = login_res.headers.get("set-cookie", "")
+    match = re.search(r"refresh_token=([^;]+)", cookie_header)
+    refresh_token = match.group(1)
+
+    # Refresh
+    response = await client.post("/api/v1/auth/refresh", cookies={"refresh_token": refresh_token})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+
+    # Verify new cookie is set
+    new_cookie_header = response.headers.get("set-cookie", "")
+    assert "refresh_token" in new_cookie_header
+    assert "HttpOnly" in new_cookie_header
+    assert "Secure" in new_cookie_header
+    assert "SameSite=strict" in new_cookie_header
+    assert "Path=/api/v1/auth" in new_cookie_header
+
+    app.dependency_overrides.pop(get_redis, None)
+
+
+@pytest.mark.asyncio
+async def test_refresh_router_missing_cookie(client: AsyncClient):
+    response = await client.post("/api/v1/auth/refresh")
+    assert response.status_code == 401
+    assert "Refresh token is missing" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_refresh_router_spa_race_condition(client: AsyncClient):
+    from unittest.mock import AsyncMock
+    from src.main import app
+    from src.domains.auth.dependencies import get_redis
+    import re
+
+    # In a real race, the second concurrent request fails to get lock
+    # and reads the cached value from pending.
+    mock_redis = AsyncMock()
+    # Mock lock acquisition failed
+    mock_redis.set.return_value = None
+    mock_redis.get.return_value = '{"access_token": "cached_access", "refresh_token": "cached_refresh"}'
+    app.dependency_overrides[get_redis] = lambda: mock_redis
+
+    email = "race.router@example.com"
+    password = "StrongPassword123!"
+
+    # Register
+    await client.post("/api/v1/auth/register", json={
+        "name": "Race",
+        "surname": "Router",
+        "email": email,
+        "password": password
+    })
+
+    # Login
+    login_res = await client.post("/api/v1/auth/login", json={
+        "email": email,
+        "password": password
+    })
+    cookie_header = login_res.headers.get("set-cookie", "")
+    match = re.search(r"refresh_token=([^;]+)", cookie_header)
+    refresh_token = match.group(1)
+
+    # Refresh request (hitting simulated concurrent lock)
+    response = await client.post("/api/v1/auth/refresh", cookies={"refresh_token": refresh_token})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["access_token"] == "cached_access"
+
+    cookie_header = response.headers.get("set-cookie", "")
+    assert "refresh_token=cached_refresh" in cookie_header
+
+    app.dependency_overrides.pop(get_redis, None)
+
+
+@pytest.mark.asyncio
+async def test_refresh_router_grace_period_boundary(client: AsyncClient, db_session: AsyncSession):
+    from unittest.mock import AsyncMock
+    from src.main import app
+    from src.domains.auth.dependencies import get_redis
+    from src.domains.auth.repository import RefreshTokenRepository
+    from src.core.security.jwt import decode_token
+    from datetime import datetime, timezone, timedelta
+    import uuid
+    import re
+
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+    app.dependency_overrides[get_redis] = lambda: mock_redis
+
+    email = "grace.boundary@example.com"
+    password = "StrongPassword123!"
+
+    # Register
+    await client.post("/api/v1/auth/register", json={
+        "name": "Grace",
+        "surname": "Boundary",
+        "email": email,
+        "password": password
+    })
+
+    # Login
+    login_res = await client.post("/api/v1/auth/login", json={
+        "email": email,
+        "password": password
+    })
+    cookie_header = login_res.headers.get("set-cookie", "")
+    match = re.search(r"refresh_token=([^;]+)", cookie_header)
+    refresh_token = match.group(1)
+
+    # First Refresh (marks token as used, issues Child Token)
+    refresh_res1 = await client.post("/api/v1/auth/refresh", cookies={"refresh_token": refresh_token})
+    assert refresh_res1.status_code == 200
+    cookie_header1 = refresh_res1.headers.get("set-cookie", "")
+    match1 = re.search(r"refresh_token=([^;]+)", cookie_header1)
+    child_token = match1.group(1)
+
+    # Second Refresh with SAME original token (within grace period) -> should return Child Token
+    refresh_res2 = await client.post("/api/v1/auth/refresh", cookies={"refresh_token": refresh_token})
+    assert refresh_res2.status_code == 200
+    cookie_header2 = refresh_res2.headers.get("set-cookie", "")
+    match2 = re.search(r"refresh_token=([^;]+)", cookie_header2)
+    assert match2.group(1) == child_token
+
+    # Now backdate the original token's rotated_at past 30 seconds
+    payload = decode_token(refresh_token)
+    jti = uuid.UUID(payload["jti"])
+    repo = RefreshTokenRepository(db_session)
+    db_token = await repo.get_by_jti(jti)
+    db_token.rotated_at = datetime.now(timezone.utc) - timedelta(seconds=35)
+    await db_session.commit()
+
+    # Third Refresh with SAME original token (past grace period) -> should trigger 401 reuse attack revoke
+    refresh_res3 = await client.post("/api/v1/auth/refresh", cookies={"refresh_token": refresh_token})
+    assert refresh_res3.status_code == 401
+    assert "session compromised" in refresh_res3.json()["detail"]
+
+    # Verify family is revoked
+    db_token = await repo.get_by_jti(jti)
+    assert db_token.revoked_at is not None
+
+    app.dependency_overrides.pop(get_redis, None)
