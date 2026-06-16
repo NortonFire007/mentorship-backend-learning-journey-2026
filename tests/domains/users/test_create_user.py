@@ -12,7 +12,8 @@ async def test_create_user_success(client: AsyncClient):
         "name": "Jane",
         "surname": "Doe",
         "email": "jane.doe@example.com",
-        "telegram_id": "12345678"
+        "telegram_id": "12345678",
+        "password": "Password123!"
     }
 
     response = await client.post("/api/v1/users/", json=payload)
@@ -35,7 +36,8 @@ async def test_create_user_email_conflict(client: AsyncClient, db_session: Async
     payload = {
         "name": "Another",
         "surname": "User",
-        "email": "existing@example.com"
+        "email": "existing@example.com",
+        "password": "Password123!"
     }
     response = await client.post("/api/v1/users/", json=payload)
 

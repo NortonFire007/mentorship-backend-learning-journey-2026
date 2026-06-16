@@ -1,4 +1,5 @@
 import os
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,6 +26,30 @@ class Settings(BaseSettings):
     TASKIQ_DASHBOARD_PATH: str = os.getenv("TASKIQ_DASHBOARD_PATH", "/admin")
     TASKIQ_DASHBOARD_URL: str = os.getenv("TASKIQ_DASHBOARD_URL", "http://localhost:8000/admin")
     TASKIQ_WORKER_RELOAD: bool = os.getenv("TASKIQ_WORKER_RELOAD", "True").lower() == "true"
+
+    # JWT Settings
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
+    REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
+
+    # Auth Redis
+    REDIS_AUTH_URL: str = os.getenv("REDIS_AUTH_URL", "redis://localhost:6379/1")
+
+    # Rate Limiting & Grace Period
+    MAX_LOGIN_ATTEMPTS: int = int(os.getenv("MAX_LOGIN_ATTEMPTS", "5"))
+    LOGIN_LOCKOUT_MINUTES: int = int(os.getenv("LOGIN_LOCKOUT_MINUTES", "15"))
+    REFRESH_GRACE_PERIOD_SECONDS: int = int(os.getenv("REFRESH_GRACE_PERIOD_SECONDS", "30"))
+
+    # CORS
+    CORS_ALLOWED_ORIGINS: list[str] | str = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+    @field_validator("CORS_ALLOWED_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
 
 
 

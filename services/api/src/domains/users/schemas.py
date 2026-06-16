@@ -18,7 +18,7 @@ class UserCreate(UserBase):
     """
     Schema for creating a new user.
     """
-    pass
+    password: str
 
 class UserUpdate(BaseModel):
     """
