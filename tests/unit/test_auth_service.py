@@ -60,3 +60,125 @@ async def test_auth_service_register_duplicate_email(db_session: AsyncSession):
 
     assert exc_info.value.status_code == 409
     assert "already registered" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_auth_service_login_success(db_session: AsyncSession):
+    from unittest.mock import AsyncMock
+    service = AuthService(db_session)
+    reg_data = RegisterRequest(
+        name="John",
+        surname="Doe",
+        email="john.doe@example.com",
+        password="SecurePassword123!"
+    )
+    await service.register(reg_data)
+
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+
+    token_pair = await service.login(
+        email="john.doe@example.com",
+        password="SecurePassword123!",
+        redis_client=mock_redis
+    )
+
+    assert token_pair.access_token is not None
+    assert token_pair.refresh_token is not None
+    mock_redis.delete.assert_called_once()  # clear_login_attempts
+
+
+@pytest.mark.asyncio
+async def test_auth_service_login_wrong_password(db_session: AsyncSession):
+    from unittest.mock import AsyncMock, MagicMock
+    service = AuthService(db_session)
+    reg_data = RegisterRequest(
+        name="John",
+        surname="Doe",
+        email="john.doe.wrong@example.com",
+        password="SecurePassword123!"
+    )
+    await service.register(reg_data)
+
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+    mock_pipeline = MagicMock()
+    mock_pipeline.incr.return_value = mock_pipeline
+    mock_pipeline.expire.return_value = mock_pipeline
+    mock_pipeline.execute = AsyncMock(return_value=[1])
+    mock_redis.pipeline = MagicMock(return_value=mock_pipeline)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.login(
+            email="john.doe.wrong@example.com",
+            password="WrongPassword123!",
+            redis_client=mock_redis
+        )
+
+    assert exc_info.value.status_code == 401
+    assert "Invalid credentials" in exc_info.value.detail
+    mock_pipeline.incr.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_auth_service_login_non_existent_email(db_session: AsyncSession):
+    from unittest.mock import AsyncMock
+    service = AuthService(db_session)
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.login(
+            email="nonexistent@example.com",
+            password="SomePassword123!",
+            redis_client=mock_redis
+        )
+
+    assert exc_info.value.status_code == 401
+    assert "Invalid credentials" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_auth_service_login_inactive_user(db_session: AsyncSession):
+    from unittest.mock import AsyncMock
+    service = AuthService(db_session)
+    reg_data = RegisterRequest(
+        name="Inactive",
+        surname="User",
+        email="inactive@example.com",
+        password="SecurePassword123!"
+    )
+    user = await service.register(reg_data)
+    user.is_active = False
+    await db_session.commit()
+
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.login(
+            email="inactive@example.com",
+            password="SecurePassword123!",
+            redis_client=mock_redis
+        )
+
+    assert exc_info.value.status_code == 401
+    assert "Account is disabled" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_auth_service_login_rate_limit(db_session: AsyncSession):
+    from unittest.mock import AsyncMock
+    service = AuthService(db_session)
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = "5"
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.login(
+            email="rate_limit@example.com",
+            password="SecurePassword123!",
+            redis_client=mock_redis
+        )
+
+    assert exc_info.value.status_code == 429
+    assert "Rate limit exceeded" in exc_info.value.detail

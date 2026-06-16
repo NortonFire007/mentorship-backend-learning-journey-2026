@@ -13,10 +13,15 @@ from src.domains.alerts.router import router as alerts_router
 from src.domains.tasks.router import router as tasks_router
 from src.domains.auth.router import router as auth_router
 
+from src.core.security.redis_auth import get_redis_client, close_redis
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Generate dummy hash for timing attack defense
     app.state.dummy_hash = generate_dummy_hash()
+    
+    # Initialize Redis client pool
+    get_redis_client()
     
     # Start taskiq broker connections
     if not broker.is_worker_process:
@@ -29,6 +34,9 @@ async def lifespan(app: FastAPI):
         await broker.shutdown()
     if not rabbitmq_broker.is_worker_process:
         await rabbitmq_broker.shutdown()
+        
+    # Close Redis connection pool
+    await close_redis()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
