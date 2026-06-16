@@ -1,10 +1,18 @@
 from fastapi import APIRouter, Depends, status, Request, Response, Cookie, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
 from redis.asyncio import Redis
 from src.core.config import settings
 from src.domains.auth.schemas import RegisterRequest, LoginRequest, TokenResponse
 from src.domains.auth.service import AuthService
-from src.domains.auth.dependencies import get_auth_service, get_redis
+from src.domains.auth.dependencies import (
+    get_auth_service,
+    get_redis,
+    get_current_user,
+    reusable_oauth2,
+)
+from src.core.security.jwt import decode_token
 from src.domains.users.schemas import UserRead
+from src.domains.users.models import User
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -104,3 +112,67 @@ async def refresh(
         token_type="bearer",
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
+
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout(
+    response: Response,
+    token: HTTPAuthorizationCredentials = Depends(reusable_oauth2),
+    current_user: User = Depends(get_current_user),
+    refresh_token: str | None = Cookie(None),
+    service: AuthService = Depends(get_auth_service),
+    redis: Redis = Depends(get_redis),
+):
+    """
+    Log out from the current device.
+    Blacklists the access token and the refresh token (if present), and clears the refresh token cookie.
+    """
+    payload = decode_token(token.credentials)
+    access_jti = payload["jti"]
+    access_exp = payload["exp"]
+
+    await service.logout(
+        access_jti=access_jti,
+        access_exp=access_exp,
+        refresh_token_str=refresh_token,
+        redis_client=redis,
+    )
+
+    response.delete_cookie(key="refresh_token", path="/api/v1/auth")
+    return {"detail": "Successfully logged out"}
+
+
+@router.post("/logout-all", status_code=status.HTTP_200_OK)
+async def logout_all(
+    response: Response,
+    token: HTTPAuthorizationCredentials = Depends(reusable_oauth2),
+    current_user: User = Depends(get_current_user),
+    service: AuthService = Depends(get_auth_service),
+    redis: Redis = Depends(get_redis),
+):
+    """
+    Log out from all devices.
+    Blacklists all active refresh tokens for the user and the current access token.
+    """
+    payload = decode_token(token.credentials)
+    access_jti = payload["jti"]
+    access_exp = payload["exp"]
+
+    await service.logout_all(
+        user_id=current_user.id,
+        access_jti=access_jti,
+        access_exp=access_exp,
+        redis_client=redis,
+    )
+
+    response.delete_cookie(key="refresh_token", path="/api/v1/auth")
+    return {"detail": "Successfully logged out from all devices"}
+
+
+@router.get("/me", response_model=UserRead)
+async def get_me(current_user: User = Depends(get_current_user)):
+    """
+    Get the profile of the currently authenticated user.
+    """
+    return current_user
+

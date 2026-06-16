@@ -297,3 +297,79 @@ class AuthService:
 
         await self.session.commit()
         return token_pair
+
+    async def logout(
+        self,
+        access_jti: str,
+        access_exp: int,
+        refresh_token_str: str | None,
+        redis_client: Redis,
+    ) -> None:
+        """
+        Log out the user:
+        1. Blacklist access token JTI in Redis.
+        2. Blacklist refresh token JTI in Redis (if provided).
+        3. Mark refresh token revoked in the database.
+        """
+        now_ts = int(datetime.now(timezone.utc).timestamp())
+        access_ttl = max(0, access_exp - now_ts)
+        if access_ttl > 0:
+            await blacklist_token(redis_client, access_jti, "access", access_ttl)
+
+        if refresh_token_str:
+            try:
+                payload = decode_token(refresh_token_str)
+                refresh_jti_str = payload.get("jti")
+                refresh_exp = payload.get("exp")
+
+                if refresh_jti_str:
+                    refresh_jti = uuid.UUID(refresh_jti_str)
+
+                    # Revoke in DB
+                    refresh_token_repo = RefreshTokenRepository(self.session)
+                    await refresh_token_repo.revoke(refresh_jti)
+                    await self.session.commit()
+
+                    # Blacklist in Redis
+                    if refresh_exp:
+                        refresh_ttl = max(0, refresh_exp - now_ts)
+                        if refresh_ttl > 0:
+                            await blacklist_token(redis_client, refresh_jti_str, "refresh", refresh_ttl)
+            except Exception:
+                pass
+
+    async def logout_all(
+        self,
+        user_id: uuid.UUID,
+        access_jti: str,
+        access_exp: int,
+        redis_client: Redis,
+    ) -> None:
+        """
+        Log out of all devices/sessions:
+        1. Blacklist the current access token.
+        2. Retrieve all active refresh tokens for the user from the database.
+        3. Revoke all of them in the database.
+        4. Blacklist all of their JTIs in Redis.
+        """
+        now_ts = int(datetime.now(timezone.utc).timestamp())
+        access_ttl = max(0, access_exp - now_ts)
+        if access_ttl > 0:
+            await blacklist_token(redis_client, access_jti, "access", access_ttl)
+
+        refresh_token_repo = RefreshTokenRepository(self.session)
+        active_tokens = await refresh_token_repo.get_active_by_user(user_id)
+
+        if active_tokens:
+            # Revoke all in DB
+            await refresh_token_repo.revoke_all_user(user_id)
+            await self.session.commit()
+
+            # Blacklist all JTIs in Redis
+            for token in active_tokens:
+                token_jti_str = str(token.jti)
+                token_exp_ts = int(token.expires_at.replace(tzinfo=timezone.utc).timestamp())
+                refresh_ttl = max(0, token_exp_ts - now_ts)
+                if refresh_ttl > 0:
+                    await blacklist_token(redis_client, token_jti_str, "refresh", refresh_ttl)
+

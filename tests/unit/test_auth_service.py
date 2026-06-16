@@ -325,3 +325,101 @@ async def test_auth_service_refresh_reuse_within_grace_period(db_session: AsyncS
     child_payload1 = decode_token(first_new_pair.refresh_token)
     child_payload2 = decode_token(second_new_pair.refresh_token)
     assert child_payload1["jti"] == child_payload2["jti"]
+
+
+@pytest.mark.asyncio
+async def test_auth_service_logout_success(db_session: AsyncSession):
+    from unittest.mock import AsyncMock
+    from src.core.security.jwt import decode_token
+    from src.domains.auth.repository import RefreshTokenRepository
+    import uuid
+
+    service = AuthService(db_session)
+    reg_data = RegisterRequest(
+        name="Logout",
+        surname="User",
+        email="logout.success@example.com",
+        password="SecurePassword123!"
+    )
+    await service.register(reg_data)
+
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+
+    token_pair = await service.login(
+        email="logout.success@example.com",
+        password="SecurePassword123!",
+        redis_client=mock_redis
+    )
+
+    payload = decode_token(token_pair.access_token)
+    access_jti = payload["jti"]
+    access_exp = payload["exp"]
+
+    # Call logout
+    await service.logout(
+        access_jti=access_jti,
+        access_exp=access_exp,
+        refresh_token_str=token_pair.refresh_token,
+        redis_client=mock_redis
+    )
+
+    mock_redis.set.assert_called()
+
+    refresh_payload = decode_token(token_pair.refresh_token)
+    repo = RefreshTokenRepository(db_session)
+    db_token = await repo.get_by_jti(uuid.UUID(refresh_payload["jti"]))
+    assert db_token.revoked_at is not None
+
+
+@pytest.mark.asyncio
+async def test_auth_service_logout_all_success(db_session: AsyncSession):
+    from unittest.mock import AsyncMock
+    from src.core.security.jwt import decode_token
+    from src.domains.auth.repository import RefreshTokenRepository
+    import uuid
+
+    service = AuthService(db_session)
+    user_db = await service.register(RegisterRequest(
+        name="LogoutAll",
+        surname="User",
+        email="logoutall.success@example.com",
+        password="SecurePassword123!"
+    ))
+
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+
+    pair1 = await service.login(
+        email="logoutall.success@example.com",
+        password="SecurePassword123!",
+        redis_client=mock_redis
+    )
+
+    pair2 = await service.login(
+        email="logoutall.success@example.com",
+        password="SecurePassword123!",
+        redis_client=mock_redis
+    )
+
+    payload = decode_token(pair1.access_token)
+    access_jti = payload["jti"]
+    access_exp = payload["exp"]
+
+    await service.logout_all(
+        user_id=user_db.id,
+        access_jti=access_jti,
+        access_exp=access_exp,
+        redis_client=mock_redis
+    )
+
+    payload1 = decode_token(pair1.refresh_token)
+    payload2 = decode_token(pair2.refresh_token)
+
+    repo = RefreshTokenRepository(db_session)
+    db_token1 = await repo.get_by_jti(uuid.UUID(payload1["jti"]))
+    db_token2 = await repo.get_by_jti(uuid.UUID(payload2["jti"]))
+
+    assert db_token1.revoked_at is not None
+    assert db_token2.revoked_at is not None
+

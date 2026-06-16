@@ -404,3 +404,166 @@ async def test_refresh_router_grace_period_boundary(client: AsyncClient, db_sess
     assert db_token.revoked_at is not None
 
     app.dependency_overrides.pop(get_redis, None)
+
+
+@pytest.mark.asyncio
+async def test_logout_router_success(client: AsyncClient):
+    from unittest.mock import AsyncMock
+    from src.main import app
+    from src.domains.auth.dependencies import get_redis
+    import re
+
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+    app.dependency_overrides[get_redis] = lambda: mock_redis
+
+    email = "logout.router@example.com"
+    password = "StrongPassword123!"
+
+    # Register
+    await client.post("/api/v1/auth/register", json={
+        "name": "Logout",
+        "surname": "Router",
+        "email": email,
+        "password": password
+    })
+
+    # Login
+    login_res = await client.post("/api/v1/auth/login", json={
+        "email": email,
+        "password": password
+    })
+    data = login_res.json()
+    access_token = data["access_token"]
+    cookie_header = login_res.headers.get("set-cookie", "")
+    match = re.search(r"refresh_token=([^;]+)", cookie_header)
+    refresh_token = match.group(1)
+
+    # Call /logout
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = await client.post(
+        "/api/v1/auth/logout",
+        headers=headers,
+        cookies={"refresh_token": refresh_token}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["detail"] == "Successfully logged out"
+
+    new_cookie_header = response.headers.get("set-cookie", "")
+    assert "refresh_token=" in new_cookie_header
+
+    mock_redis.set.assert_called()
+
+    app.dependency_overrides.pop(get_redis, None)
+
+
+@pytest.mark.asyncio
+async def test_logout_all_router_success(client: AsyncClient):
+    from unittest.mock import AsyncMock
+    from src.main import app
+    from src.domains.auth.dependencies import get_redis
+
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+    app.dependency_overrides[get_redis] = lambda: mock_redis
+
+    email = "logoutall.router@example.com"
+    password = "StrongPassword123!"
+
+    # Register
+    await client.post("/api/v1/auth/register", json={
+        "name": "LogoutAll",
+        "surname": "Router",
+        "email": email,
+        "password": password
+    })
+
+    # Login
+    login_res = await client.post("/api/v1/auth/login", json={
+        "email": email,
+        "password": password
+    })
+    data = login_res.json()
+    access_token = data["access_token"]
+
+    # Call /logout-all
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = await client.post("/api/v1/auth/logout-all", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["detail"] == "Successfully logged out from all devices"
+
+    new_cookie_header = response.headers.get("set-cookie", "")
+    assert "refresh_token=" in new_cookie_header
+
+    mock_redis.set.assert_called()
+
+    app.dependency_overrides.pop(get_redis, None)
+
+
+@pytest.mark.asyncio
+async def test_get_me_success(client: AsyncClient):
+    from unittest.mock import AsyncMock
+    from src.main import app
+    from src.domains.auth.dependencies import get_redis
+
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+    app.dependency_overrides[get_redis] = lambda: mock_redis
+
+    email = "me.router@example.com"
+    password = "StrongPassword123!"
+
+    # Register
+    await client.post("/api/v1/auth/register", json={
+        "name": "Me",
+        "surname": "Router",
+        "email": email,
+        "password": password
+    })
+
+    # Login
+    login_res = await client.post("/api/v1/auth/login", json={
+        "email": email,
+        "password": password
+    })
+    data = login_res.json()
+    access_token = data["access_token"]
+
+    # Get Profile
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = await client.get("/api/v1/auth/me", headers=headers)
+
+    assert response.status_code == 200
+    profile = response.json()
+    assert profile["email"] == email
+    assert profile["name"] == "Me"
+
+    app.dependency_overrides.pop(get_redis, None)
+
+
+@pytest.mark.asyncio
+async def test_get_me_unauthorized(client: AsyncClient):
+    from unittest.mock import AsyncMock
+    from src.main import app
+    from src.domains.auth.dependencies import get_redis
+
+    # Missing token
+    response = await client.get("/api/v1/auth/me")
+    assert response.status_code == 401
+
+    # Invalid token
+    response = await client.get("/api/v1/auth/me", headers={"Authorization": "Bearer invalid_token"})
+    assert response.status_code == 401
+
+    # Blacklisted token
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = b"1"
+    app.dependency_overrides[get_redis] = lambda: mock_redis
+
+    response = await client.get("/api/v1/auth/me", headers={"Authorization": "Bearer some_token"})
+    assert response.status_code == 401
+
+    app.dependency_overrides.pop(get_redis, None)
+
