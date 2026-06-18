@@ -7,9 +7,9 @@ from src.domains.users.models import User
 
 class UserService:
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, repository: UserRepository, session: AsyncSession):
+        self.repository = repository
         self.session = session
-        self.repository = UserRepository(session)
 
     async def create_user(self, user_data: UserCreate) -> User:
         """

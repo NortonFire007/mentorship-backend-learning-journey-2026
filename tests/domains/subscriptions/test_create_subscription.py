@@ -6,14 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tests.factories import UserFactory
 
 @pytest.mark.asyncio
-async def test_create_subscription_success(client: AsyncClient, db_session: AsyncSession):
+async def test_create_subscription_success(verified_user_client: AsyncClient, db_session: AsyncSession):
     """
-    Test creating a new subscription for an existing user.
+    Test creating a new subscription for an authenticated user.
+    Verifies that the subscription is automatically bound to the current user.
     """
-    user = await UserFactory.acreate(db_session)
+    user = verified_user_client.user
 
     payload = {
-        "user_id": str(user.id),
         "destination": "Paris, France",
         "travel_type": "flight",
         "start_date": str(date.today() + timedelta(days=5)),
@@ -22,26 +22,26 @@ async def test_create_subscription_success(client: AsyncClient, db_session: Asyn
         "currency": "EUR"
     }
 
-    response = await client.post("/api/v1/subscriptions/", json=payload)
+    response = await verified_user_client.post("/api/v1/subscriptions/", json=payload)
     
     assert response.status_code == 201
     data = response.json()
     assert data["destination"] == "Paris, France"
     assert data["max_price"] == "250.00"
     assert "id" in data
+    # Verify server-side binding to the current logged-in user
+    assert data["user_id"] == str(user.id)
 
 @pytest.mark.asyncio
-async def test_create_subscription_user_not_found(client: AsyncClient):
+async def test_create_subscription_unauthenticated(client: AsyncClient):
     """
-    Test creating a subscription fails if the user does not exist.
+    Test that unauthenticated requests to create a subscription return 401.
     """
     payload = {
-        "user_id": str(uuid.uuid4()),
         "destination": "London",
         "travel_type": "flight",
         "max_price": "100.00"
     }
 
     response = await client.post("/api/v1/subscriptions/", json=payload)
-    assert response.status_code == 404
-    assert "not found" in response.json()["detail"].lower()
+    assert response.status_code == 401

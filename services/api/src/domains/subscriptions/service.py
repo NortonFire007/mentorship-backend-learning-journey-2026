@@ -13,23 +13,23 @@ class SubscriptionService:
     """
     Service Layer for the Subscription domain.
     """
-    def __init__(self, session: AsyncSession):
+    def __init__(self, repository: SubscriptionRepository, session: AsyncSession):
+        self.repository = repository
         self.session = session
-        self.repository = SubscriptionRepository(session)
 
-    async def create_subscription(self, sub_data: SubscriptionCreate) -> Subscription:
+    async def create_subscription(self, sub_data: SubscriptionCreate, user_id: uuid.UUID) -> Subscription:
         """
         Create a new traveler subscription.
         """
         user_repository = UserRepository(self.session)
-        user = await user_repository.get_by_id(sub_data.user_id)
+        user = await user_repository.get_by_id(user_id)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User with ID {sub_data.user_id} not found. Cannot create subscription."
+                detail=f"User with ID {user_id} not found. Cannot create subscription."
             )
 
-        sub = await self.repository.create(sub_data)
+        sub = await self.repository.create(sub_data, user_id)
         await self.session.commit()
         await self.session.refresh(sub)
         return sub
@@ -69,6 +69,13 @@ class SubscriptionService:
         Partially update subscription.
         """
         sub = await self.get_subscription_by_id(sub_id)
+        
+        # Explicitly block user_id modification to prevent hijacking
+        if getattr(sub_data, "user_id", None) is not None or "user_id" in sub_data.model_dump(exclude_unset=True):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Modifying user_id is not allowed"
+            )
         
         # Determine final state of dates to prevent invalid ranges
         # Use existing DB values if the update payload doesn't provide them.

@@ -74,11 +74,11 @@ class SubscriptionRepository:
         result = await self.session.execute(stmt)
         return [dict(row._mapping) for row in result.all()]
 
-    async def create(self, sub_data: SubscriptionCreate) -> Subscription:
+    async def create(self, sub_data: SubscriptionCreate, user_id: uuid.UUID) -> Subscription:
         """
         Create a new subscription record.
         """
-        sub = Subscription(**sub_data.model_dump())
+        sub = Subscription(user_id=user_id, **sub_data.model_dump())
         if not sub.id:
             sub.id = uuid.uuid4()
             

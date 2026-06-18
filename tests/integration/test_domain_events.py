@@ -22,16 +22,15 @@ def mock_publisher():
 
 
 @pytest.mark.asyncio
-async def test_create_subscription_publishes_event(client, db_session, mock_publisher):
+async def test_create_subscription_publishes_event(verified_user_client, db_session, mock_publisher):
     """
     Asserts that creating a subscription via API successfully extracts and
     dispatches the SubscriptionCreatedEvent via the MockEventPublisher.
     """
-    user = await UserFactory.acreate(db_session)
+    user = verified_user_client.user
     
     # Call the POST subscription endpoint
     payload = {
-        "user_id": str(user.id),
         "origin": "NYC",
         "destination": "PAR",
         "travel_type": TravelType.FLIGHT.value,
@@ -39,7 +38,7 @@ async def test_create_subscription_publishes_event(client, db_session, mock_publ
         "currency": CurrencyEnum.USD.value,
     }
     
-    response = await client.post("/api/v1/subscriptions/", json=payload)
+    response = await verified_user_client.post("/api/v1/subscriptions/", json=payload)
     assert response.status_code == 201
     
     # Assert that MockEventPublisher received the event
@@ -51,8 +50,8 @@ async def test_create_subscription_publishes_event(client, db_session, mock_publ
     assert event.user_id == user.id
     assert event.destination == "PAR"
     assert event.subscription_id is not None
-
-
+ 
+ 
 @pytest.mark.asyncio
 async def test_database_rollback_discards_events(db_session, mock_publisher):
     """
@@ -63,7 +62,6 @@ async def test_database_rollback_discards_events(db_session, mock_publisher):
     
     repository = SubscriptionRepository(db_session)
     sub_data = SubscriptionCreate(
-        user_id=user.id,
         origin="NYC",
         destination="LON",
         travel_type=TravelType.FLIGHT,
@@ -73,7 +71,7 @@ async def test_database_rollback_discards_events(db_session, mock_publisher):
         end_date=None,
         duration_days=None,
     )
-    subscription = await repository.create(sub_data)
+    subscription = await repository.create(sub_data, user.id)
     
     dispatcher = EventDispatcher(mock_publisher)
     events = dispatcher.extract_events(db_session)
