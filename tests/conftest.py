@@ -1,10 +1,11 @@
 import pytest
 import pytest_asyncio
+import inspect
 from typing import AsyncGenerator
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 from taskiq import InMemoryBroker
 
 # Initialize InMemoryBroker for tests and patch globally before loading main application
@@ -19,7 +20,12 @@ result_backend_patch.start()
 
 from src.main import app
 from src.core.config import settings
-from src.db.database import get_db
+from src.db.database import get_db, get_event_publisher
+from src.core.events.dispatcher import EventDispatcher
+from src.domains.auth.dependencies import get_redis
+from src.core.security.jwt import encode_access_token, generate_jti
+from tests.factories import UserFactory
+
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -65,13 +71,9 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     Unit of Work event-dispatching lifecycle.
     """
     async def override_get_db():
-        from src.db.database import get_event_publisher
-        from src.core.events.dispatcher import EventDispatcher
-        
         # Resolve the active event publisher (which may be overridden in tests)
         override = app.dependency_overrides.get(get_event_publisher)
         if override:
-            import inspect
             if inspect.iscoroutinefunction(override):
                 publisher = await override()
             else:
@@ -105,3 +107,48 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         yield ac
         
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def superuser_client(client: AsyncClient, db_session: AsyncSession) -> AsyncClient:
+    """
+    Returns an authenticated AsyncClient for a superuser.
+    Mocks Redis dependency.
+    """
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+    app.dependency_overrides[get_redis] = lambda: mock_redis
+    
+    user = await UserFactory.acreate(db_session, is_superuser=True, is_verified=True)
+    token = encode_access_token(user.id, generate_jti())
+    
+    client.headers["Authorization"] = f"Bearer {token}"
+    # Attach user object to client for reference in tests
+    client.user = user
+    
+    yield client
+    
+    app.dependency_overrides.pop(get_redis, None)
+
+
+@pytest_asyncio.fixture()
+async def verified_user_client(client: AsyncClient, db_session: AsyncSession) -> AsyncClient:
+    """
+    Returns an authenticated AsyncClient for a verified regular user.
+    Mocks Redis dependency.
+    """
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+    app.dependency_overrides[get_redis] = lambda: mock_redis
+    
+    user = await UserFactory.acreate(db_session, is_superuser=False, is_verified=True)
+    token = encode_access_token(user.id, generate_jti())
+    
+    client.headers["Authorization"] = f"Bearer {token}"
+    # Attach user object to client for reference in tests
+    client.user = user
+    
+    yield client
+    
+    app.dependency_overrides.pop(get_redis, None)
+

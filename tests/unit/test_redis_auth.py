@@ -1,5 +1,5 @@
 import json
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 import pytest
 from src.core.security.redis_auth import (
     blacklist_token,
@@ -37,7 +37,6 @@ async def test_is_blacklisted():
 
 @pytest.mark.asyncio
 async def test_increment_login_attempts():
-    from unittest.mock import MagicMock
     mock_redis = AsyncMock()
     mock_pipeline = MagicMock()
     mock_pipeline.incr.return_value = mock_pipeline

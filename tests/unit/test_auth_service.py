@@ -2,9 +2,15 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from unittest.mock import AsyncMock, MagicMock
+from datetime import datetime, timezone, timedelta
+import uuid
+
 from src.domains.auth.service import AuthService
 from src.domains.auth.schemas import RegisterRequest
 from src.domains.users.models import User
+from src.core.security.jwt import decode_token
+from src.domains.auth.repository import RefreshTokenRepository
 
 
 @pytest.mark.asyncio
@@ -64,7 +70,6 @@ async def test_auth_service_register_duplicate_email(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_auth_service_login_success(db_session: AsyncSession):
-    from unittest.mock import AsyncMock
     service = AuthService(db_session)
     reg_data = RegisterRequest(
         name="John",
@@ -90,7 +95,6 @@ async def test_auth_service_login_success(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_auth_service_login_wrong_password(db_session: AsyncSession):
-    from unittest.mock import AsyncMock, MagicMock
     service = AuthService(db_session)
     reg_data = RegisterRequest(
         name="John",
@@ -122,7 +126,6 @@ async def test_auth_service_login_wrong_password(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_auth_service_login_non_existent_email(db_session: AsyncSession):
-    from unittest.mock import AsyncMock
     service = AuthService(db_session)
     mock_redis = AsyncMock()
     mock_redis.get.return_value = None
@@ -140,7 +143,6 @@ async def test_auth_service_login_non_existent_email(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_auth_service_login_inactive_user(db_session: AsyncSession):
-    from unittest.mock import AsyncMock
     service = AuthService(db_session)
     reg_data = RegisterRequest(
         name="Inactive",
@@ -168,7 +170,6 @@ async def test_auth_service_login_inactive_user(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_auth_service_login_rate_limit(db_session: AsyncSession):
-    from unittest.mock import AsyncMock
     service = AuthService(db_session)
     mock_redis = AsyncMock()
     mock_redis.get.return_value = "5"
@@ -186,7 +187,6 @@ async def test_auth_service_login_rate_limit(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_auth_service_refresh_success(db_session: AsyncSession):
-    from unittest.mock import AsyncMock
     service = AuthService(db_session)
     reg_data = RegisterRequest(
         name="Refresh",
@@ -216,10 +216,6 @@ async def test_auth_service_refresh_success(db_session: AsyncSession):
     assert new_pair.refresh_token != token_pair.refresh_token
 
     # Verify old token is marked as used
-    from src.core.security.jwt import decode_token
-    from src.domains.auth.repository import RefreshTokenRepository
-    import uuid
-    
     old_payload = decode_token(token_pair.refresh_token)
     repo = RefreshTokenRepository(db_session)
     old_db_token = await repo.get_by_jti(uuid.UUID(old_payload["jti"]))
@@ -229,12 +225,6 @@ async def test_auth_service_refresh_success(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_auth_service_refresh_reuse_post_grace_period(db_session: AsyncSession):
-    from unittest.mock import AsyncMock
-    from datetime import datetime, timezone, timedelta
-    from src.core.security.jwt import decode_token
-    from src.domains.auth.repository import RefreshTokenRepository
-    import uuid
-
     service = AuthService(db_session)
     reg_data = RegisterRequest(
         name="Reuse",
@@ -284,11 +274,6 @@ async def test_auth_service_refresh_reuse_post_grace_period(db_session: AsyncSes
 
 @pytest.mark.asyncio
 async def test_auth_service_refresh_reuse_within_grace_period(db_session: AsyncSession):
-    from unittest.mock import AsyncMock
-    from src.core.security.jwt import decode_token
-    from src.domains.auth.repository import RefreshTokenRepository
-    import uuid
-
     service = AuthService(db_session)
     reg_data = RegisterRequest(
         name="Grace",
@@ -329,11 +314,6 @@ async def test_auth_service_refresh_reuse_within_grace_period(db_session: AsyncS
 
 @pytest.mark.asyncio
 async def test_auth_service_logout_success(db_session: AsyncSession):
-    from unittest.mock import AsyncMock
-    from src.core.security.jwt import decode_token
-    from src.domains.auth.repository import RefreshTokenRepository
-    import uuid
-
     service = AuthService(db_session)
     reg_data = RegisterRequest(
         name="Logout",
@@ -374,11 +354,6 @@ async def test_auth_service_logout_success(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_auth_service_logout_all_success(db_session: AsyncSession):
-    from unittest.mock import AsyncMock
-    from src.core.security.jwt import decode_token
-    from src.domains.auth.repository import RefreshTokenRepository
-    import uuid
-
     service = AuthService(db_session)
     user_db = await service.register(RegisterRequest(
         name="LogoutAll",

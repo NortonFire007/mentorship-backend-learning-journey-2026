@@ -5,9 +5,9 @@ from tests.factories import UserFactory, SubscriptionFactory
 from src.core.enums import TravelType
 
 @pytest.mark.asyncio
-async def test_get_user_active_counts(client: AsyncClient, db_session: AsyncSession):
+async def test_get_user_active_counts(superuser_client: AsyncClient, db_session: AsyncSession):
     """
-    Test fetching active subscription counts per user.
+    Test fetching active subscription counts per user (as superuser).
     """
     user1 = await UserFactory.acreate(db_session)
     user2 = await UserFactory.acreate(db_session)
@@ -20,7 +20,7 @@ async def test_get_user_active_counts(client: AsyncClient, db_session: AsyncSess
     await SubscriptionFactory.acreate(db_session, user=user2, is_active=True)
     await SubscriptionFactory.acreate(db_session, user=user2, is_active=False)
     
-    response = await client.get("/api/v1/users/stats/active-counts")
+    response = await superuser_client.get("/api/v1/users/stats/active-counts")
     assert response.status_code == 200
     data = response.json()
     
@@ -32,3 +32,22 @@ async def test_get_user_active_counts(client: AsyncClient, db_session: AsyncSess
     
     assert user2_stats is not None
     assert user2_stats["active_subscriptions_count"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_get_user_active_counts_unauthorized(client: AsyncClient):
+    """
+    Test that unauthenticated requests to get user active counts return 401.
+    """
+    response = await client.get("/api/v1/users/stats/active-counts")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_get_user_active_counts_forbidden(verified_user_client: AsyncClient):
+    """
+    Test that regular (non-superuser) verified users cannot get active counts (403).
+    """
+    response = await verified_user_client.get("/api/v1/users/stats/active-counts")
+    assert response.status_code == 403
+

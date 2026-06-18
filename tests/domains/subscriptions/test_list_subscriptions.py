@@ -1,4 +1,5 @@
 import pytest
+from datetime import date, timedelta
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.enums import TravelType
@@ -38,7 +39,6 @@ async def test_list_subscriptions(client: AsyncClient, db_session: AsyncSession)
     assert all(d["travel_type"] == "flight" for d in data)
 
     # 4. Advanced filtering (min_price, max_price)
-    from datetime import date, timedelta
     await SubscriptionFactory.acreate(
         db_session, user=user1, travel_type=TravelType.PACKAGE, is_active=True,
         min_price=100.0, max_price=500.0,

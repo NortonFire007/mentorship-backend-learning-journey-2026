@@ -4,13 +4,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.db.database import get_db
 from src.domains.users.schemas import UserCreate, UserRead, UserUpdate, UserWithSubscriptionsRead, UserActiveCountRead
 from src.domains.users.service import UserService
+from src.domains.users.models import User
+from src.domains.auth.dependencies import get_current_superuser
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.post("/", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 async def create_user_endpoint(
     user_in: UserCreate, 
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_superuser: User = Depends(get_current_superuser),
 ):
     """
     Register a new user in the system.
@@ -21,7 +24,8 @@ async def create_user_endpoint(
 
 @router.get("/stats/active-counts", response_model=list[UserActiveCountRead])
 async def get_active_subscription_counts_endpoint(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_superuser: User = Depends(get_current_superuser),
 ):
     """
     Retrieve all users along with the count of their active subscriptions.
@@ -31,7 +35,8 @@ async def get_active_subscription_counts_endpoint(
 
 @router.get("/", response_model=list[UserWithSubscriptionsRead])
 async def list_users_endpoint(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_superuser: User = Depends(get_current_superuser),
 ):
     """
     Retrieve a list of all users.

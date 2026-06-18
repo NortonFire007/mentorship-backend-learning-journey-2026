@@ -1,6 +1,17 @@
 import pytest
+import re
+import uuid
+from datetime import datetime, timezone, timedelta
+from unittest.mock import AsyncMock, MagicMock
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.main import app
+from src.domains.auth.dependencies import get_redis
+from src.domains.users.models import User
+from src.domains.auth.repository import RefreshTokenRepository
+from src.core.security.jwt import decode_token
 
 
 @pytest.mark.asyncio
@@ -72,10 +83,6 @@ async def test_register_router_weak_password_validation(
 
 @pytest.mark.asyncio
 async def test_login_router_success(client: AsyncClient):
-    from unittest.mock import AsyncMock
-    from src.main import app
-    from src.domains.auth.dependencies import get_redis
-
     mock_redis = AsyncMock()
     mock_redis.get.return_value = None
     app.dependency_overrides[get_redis] = lambda: mock_redis
@@ -116,10 +123,6 @@ async def test_login_router_success(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_login_router_wrong_password(client: AsyncClient):
-    from unittest.mock import AsyncMock, MagicMock
-    from src.main import app
-    from src.domains.auth.dependencies import get_redis
-
     mock_redis = AsyncMock()
     mock_redis.get.return_value = None
     mock_pipeline = MagicMock()
@@ -154,10 +157,6 @@ async def test_login_router_wrong_password(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_login_router_non_existent_email(client: AsyncClient):
-    from unittest.mock import AsyncMock
-    from src.main import app
-    from src.domains.auth.dependencies import get_redis
-
     mock_redis = AsyncMock()
     mock_redis.get.return_value = None
     app.dependency_overrides[get_redis] = lambda: mock_redis
@@ -174,12 +173,6 @@ async def test_login_router_non_existent_email(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_login_router_inactive_user(client: AsyncClient, db_session: AsyncSession):
-    from unittest.mock import AsyncMock
-    from src.main import app
-    from src.domains.auth.dependencies import get_redis
-    from sqlalchemy import select
-    from src.domains.users.models import User
-
     mock_redis = AsyncMock()
     mock_redis.get.return_value = None
     app.dependency_overrides[get_redis] = lambda: mock_redis
@@ -214,10 +207,6 @@ async def test_login_router_inactive_user(client: AsyncClient, db_session: Async
 
 @pytest.mark.asyncio
 async def test_login_router_rate_limit(client: AsyncClient):
-    from unittest.mock import AsyncMock
-    from src.main import app
-    from src.domains.auth.dependencies import get_redis
-
     mock_redis = AsyncMock()
     mock_redis.get.return_value = "5"
     app.dependency_overrides[get_redis] = lambda: mock_redis
@@ -234,11 +223,6 @@ async def test_login_router_rate_limit(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_refresh_router_success(client: AsyncClient):
-    from unittest.mock import AsyncMock
-    from src.main import app
-    from src.domains.auth.dependencies import get_redis
-    import re
-
     mock_redis = AsyncMock()
     mock_redis.get.return_value = None
     app.dependency_overrides[get_redis] = lambda: mock_redis
@@ -291,11 +275,6 @@ async def test_refresh_router_missing_cookie(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_refresh_router_spa_race_condition(client: AsyncClient):
-    from unittest.mock import AsyncMock
-    from src.main import app
-    from src.domains.auth.dependencies import get_redis
-    import re
-
     # In a real race, the second concurrent request fails to get lock
     # and reads the cached value from pending.
     mock_redis = AsyncMock()
@@ -339,15 +318,6 @@ async def test_refresh_router_spa_race_condition(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_refresh_router_grace_period_boundary(client: AsyncClient, db_session: AsyncSession):
-    from unittest.mock import AsyncMock
-    from src.main import app
-    from src.domains.auth.dependencies import get_redis
-    from src.domains.auth.repository import RefreshTokenRepository
-    from src.core.security.jwt import decode_token
-    from datetime import datetime, timezone, timedelta
-    import uuid
-    import re
-
     mock_redis = AsyncMock()
     mock_redis.get.return_value = None
     app.dependency_overrides[get_redis] = lambda: mock_redis
@@ -408,11 +378,6 @@ async def test_refresh_router_grace_period_boundary(client: AsyncClient, db_sess
 
 @pytest.mark.asyncio
 async def test_logout_router_success(client: AsyncClient):
-    from unittest.mock import AsyncMock
-    from src.main import app
-    from src.domains.auth.dependencies import get_redis
-    import re
-
     mock_redis = AsyncMock()
     mock_redis.get.return_value = None
     app.dependency_overrides[get_redis] = lambda: mock_redis
@@ -460,10 +425,6 @@ async def test_logout_router_success(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_logout_all_router_success(client: AsyncClient):
-    from unittest.mock import AsyncMock
-    from src.main import app
-    from src.domains.auth.dependencies import get_redis
-
     mock_redis = AsyncMock()
     mock_redis.get.return_value = None
     app.dependency_overrides[get_redis] = lambda: mock_redis
@@ -504,10 +465,6 @@ async def test_logout_all_router_success(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_get_me_success(client: AsyncClient):
-    from unittest.mock import AsyncMock
-    from src.main import app
-    from src.domains.auth.dependencies import get_redis
-
     mock_redis = AsyncMock()
     mock_redis.get.return_value = None
     app.dependency_overrides[get_redis] = lambda: mock_redis
@@ -545,10 +502,6 @@ async def test_get_me_success(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_get_me_unauthorized(client: AsyncClient):
-    from unittest.mock import AsyncMock
-    from src.main import app
-    from src.domains.auth.dependencies import get_redis
-
     # Missing token
     response = await client.get("/api/v1/auth/me")
     assert response.status_code == 401
