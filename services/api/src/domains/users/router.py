@@ -1,10 +1,18 @@
 import uuid
 from fastapi import APIRouter, Depends, status
-from src.domains.users.schemas import UserCreate, UserRead, UserUpdate, UserWithSubscriptionsRead, UserActiveCountRead
+from redis.asyncio import Redis
+from src.domains.users.schemas import (
+    UserCreate,
+    UserRead,
+    UserUpdate,
+    UserWithSubscriptionsRead,
+    UserActiveCountRead,
+    UserPasswordChange,
+)
 from src.domains.users.service import UserService
 from src.domains.users.dependencies import get_user_service, get_user_profile_access, get_user_profile_edit_access
 from src.domains.users.models import User
-from src.domains.auth.dependencies import get_current_superuser
+from src.domains.auth.dependencies import get_current_superuser, get_redis
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -61,3 +69,18 @@ async def update_user_endpoint(
     Partially update user profile (e.g., preferred currency or telegram ID).
     """
     return await service.update_user(user_id, user_in)
+
+@router.post("/{user_id}/change-password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password_endpoint(
+    password_data: UserPasswordChange,
+    user_id: uuid.UUID = Depends(get_user_profile_edit_access),
+    service: UserService = Depends(get_user_service),
+    redis: Redis = Depends(get_redis),
+):
+    """
+    Change the user's password.
+    Requires entering the correct old password.
+    Revokes all active sessions for this user.
+    """
+    await service.change_password(user_id, password_data, redis_client=redis)
+
