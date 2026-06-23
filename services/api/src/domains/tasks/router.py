@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, Depends
 from src.core.taskiq import result_backend
 from taskiq import TaskiqResult
 from src.domains.auth.dependencies import get_current_user

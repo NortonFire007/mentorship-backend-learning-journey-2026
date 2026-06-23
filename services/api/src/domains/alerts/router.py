@@ -10,7 +10,7 @@ from src.domains.alerts.dependencies import (
     verify_subscription_ownership,
     verify_bulk_subscription_ownership,
 )
-from src.domains.auth.dependencies import get_current_superuser, get_current_user
+from src.domains.auth.dependencies import get_current_superuser
 from src.domains.users.models import User
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])

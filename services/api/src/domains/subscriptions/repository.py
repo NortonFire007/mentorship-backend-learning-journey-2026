@@ -1,7 +1,7 @@
 import uuid
 from decimal import Decimal
 from typing import List, Tuple
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.domains.subscriptions.models import Subscription
 from src.domains.alerts.models import Alert
@@ -67,7 +67,7 @@ class SubscriptionRepository:
         """
         stmt = (
             select(Subscription.destination, func.count(Subscription.id).label("subscription_count"))
-            .where(Subscription.is_active == True)
+            .where(Subscription.is_active)
             .group_by(Subscription.destination)
             .order_by(func.count(Subscription.id).desc())
         )
