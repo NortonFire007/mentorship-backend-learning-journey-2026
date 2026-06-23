@@ -6,8 +6,9 @@ from src.domains.alerts.repository import AlertRepository
 from src.domains.alerts.schemas import AlertCreate
 
 class AlertService:
-    def __init__(self, session: AsyncSession):
-        self.repository = AlertRepository(session)
+    def __init__(self, repository: AlertRepository, session: AsyncSession):
+        self.repository = repository
+        self.session = session
 
     async def create_alert(self, alert_data: AlertCreate) -> Alert:
         """

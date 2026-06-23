@@ -133,3 +133,20 @@ class SubscriptionRepository:
 
         result = await self.session.execute(stmt)
         return result.all()
+
+    async def count_owned_subscriptions(self, subscription_ids: List[uuid.UUID], user_id: uuid.UUID) -> int:
+        """
+        Count how many of the specified subscription IDs belong to the given user ID.
+        """
+        if not subscription_ids:
+            return 0
+        unique_ids = list(set(subscription_ids))
+        stmt = (
+            select(func.count(Subscription.id))
+            .where(
+                Subscription.id.in_(unique_ids),
+                Subscription.user_id == user_id
+            )
+        )
+        res = await self.session.execute(stmt)
+        return res.scalar() or 0
