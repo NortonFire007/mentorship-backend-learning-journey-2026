@@ -2,7 +2,7 @@ import uuid
 from fastapi import APIRouter, Depends, status
 from src.domains.users.schemas import UserCreate, UserRead, UserUpdate, UserWithSubscriptionsRead, UserActiveCountRead
 from src.domains.users.service import UserService
-from src.domains.users.dependencies import get_user_service
+from src.domains.users.dependencies import get_user_service, get_user_profile_access, get_user_profile_edit_access
 from src.domains.users.models import User
 from src.domains.auth.dependencies import get_current_superuser
 
@@ -42,7 +42,7 @@ async def list_users_endpoint(
 
 @router.get("/{user_id}", response_model=UserWithSubscriptionsRead)
 async def get_user_endpoint(
-    user_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(get_user_profile_access),
     service: UserService = Depends(get_user_service),
 ):
     """
@@ -53,8 +53,8 @@ async def get_user_endpoint(
 
 @router.patch("/{user_id}", response_model=UserRead)
 async def update_user_endpoint(
-    user_id: uuid.UUID,
     user_in: UserUpdate,
+    user_id: uuid.UUID = Depends(get_user_profile_edit_access),
     service: UserService = Depends(get_user_service),
 ):
     """

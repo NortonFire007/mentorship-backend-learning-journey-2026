@@ -9,6 +9,8 @@ from src.domains.subscriptions.schemas import SubscriptionCreate, SubscriptionUp
 from src.domains.subscriptions.models import Subscription
 from src.core.enums import TravelType
 
+from src.domains.users.models import User
+
 class SubscriptionService:
     """
     Service Layer for the Subscription domain.
@@ -36,6 +38,7 @@ class SubscriptionService:
 
     async def list_subscriptions(
         self, 
+        current_user: User,
         user_id: uuid.UUID | None = None, 
         is_active: bool | None = None,
         travel_type: TravelType | None = None,
@@ -47,6 +50,9 @@ class SubscriptionService:
         """
         Retrieve a list of subscriptions based on filters.
         """
+        if not current_user.is_superuser:
+            user_id = current_user.id
+            
         return await self.repository.list(
             user_id, is_active, travel_type, 
             start_date_from, start_date_to, min_price, max_price
