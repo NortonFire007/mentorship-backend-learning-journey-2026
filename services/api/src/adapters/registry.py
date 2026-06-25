@@ -1,5 +1,6 @@
 from typing import Dict, Type
 from src.adapters.base import BasePriceAdapter
+from src.adapters.providers.apify_airbnb import ApifyAirbnbAdapter
 
 _adapters_registry: Dict[str, Type[BasePriceAdapter]] = {}
 
@@ -19,3 +20,7 @@ def get_adapter(provider_name: str) -> BasePriceAdapter:
     
     adapter_cls = _adapters_registry[provider_name]
     return adapter_cls()
+
+
+# Register default adapters
+register_adapter("apify_airbnb", ApifyAirbnbAdapter)

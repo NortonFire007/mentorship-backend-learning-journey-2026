@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     CORS_ALLOWED_ORIGINS: list[str] | str = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     # Apify Settings
+    BASE_URL: str = os.getenv("BASE_URL", "http://localhost:8000")
     APIFY_API_TOKEN: str | None = os.getenv("APIFY_API_TOKEN", None)
     APIFY_WEBHOOK_SECRET: str | None = os.getenv("APIFY_WEBHOOK_SECRET", None)
     APIFY_ACTOR_ID: str = os.getenv("APIFY_ACTOR_ID", "automation-lab~airbnb-listing")

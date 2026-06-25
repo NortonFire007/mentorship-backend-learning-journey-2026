@@ -13,6 +13,7 @@ from src.domains.users.models import User
 from src.domains.subscriptions.models import Subscription
 from src.domains.alerts.models import Alert
 from src.domains.auth.models import RefreshToken
+from src.domains.search_runs.models import SearchRun
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
