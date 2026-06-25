@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import uuid
 from decimal import Decimal
 from taskiq import TaskiqDepends
 from sqlalchemy import select
@@ -152,4 +153,22 @@ async def process_subscription_created_event(event_dict: dict) -> None:
     Deduplicated using Redis via the idempotent_event decorator.
     """
     logger.info(f"Successfully processed subscription created event: {event_dict}")
+
+
+@broker.task(
+    task_name="evaluate_apify_results",
+    retry_on_error=True,
+    max_retries=3,
+)
+async def evaluate_apify_results_task(
+    subscription_id: uuid.UUID,
+    dataset_id: str,
+    db: AsyncSession = TaskiqDepends(get_db)
+):
+    """
+    Stub for evaluate_apify_results_task.
+    Will be fully implemented in Story 4.
+    """
+    logger.info(f"evaluate_apify_results_task stub enqueued with subscription_id={subscription_id}, dataset_id={dataset_id}")
+
 

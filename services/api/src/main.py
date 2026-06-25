@@ -12,8 +12,10 @@ from src.domains.subscriptions.router import router as subscriptions_router
 from src.domains.alerts.router import router as alerts_router
 from src.domains.tasks.router import router as tasks_router
 from src.domains.auth.router import router as auth_router
+from src.domains.webhooks.router import router as webhooks_router
 
 from src.core.security.redis_auth import get_redis_client, close_redis
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -66,6 +68,8 @@ app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(subscriptions_router, prefix=settings.API_V1_STR)
 app.include_router(alerts_router, prefix=settings.API_V1_STR)
 app.include_router(tasks_router, prefix=settings.API_V1_STR)
+app.include_router(webhooks_router, prefix=settings.API_V1_STR)
+
 
 @app.get("/")
 async def root():
