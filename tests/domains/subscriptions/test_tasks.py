@@ -10,6 +10,17 @@ from src.core.taskiq import broker
 from src.domains.users.models import User
 from src.domains.subscriptions.models import Subscription
 from src.domains.subscriptions.tasks import import_external_subscriptions_task
+from unittest.mock import patch, AsyncMock
+
+
+@pytest.fixture(autouse=True)
+def mock_sleep():
+    """
+    Mock asyncio.sleep to run immediately, preventing background tasks
+    from sleeping and causing race conditions or test slow downs.
+    """
+    with patch("asyncio.sleep", new_callable=AsyncMock) as m:
+        yield m
 
 
 @pytest.fixture(autouse=True)

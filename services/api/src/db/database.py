@@ -7,7 +7,6 @@ from src.core.config import settings
 from src.core.events.base import EventPublisher
 from src.core.events.dispatcher import EventDispatcher
 from src.core.events.taskiq_publisher import TaskiqRabbitMQEventPublisher
-from src.core.taskiq import rabbitmq_broker
 
 engine = create_async_engine(
     settings.SQLALCHEMY_DATABASE_URI,
@@ -33,6 +32,7 @@ async def get_event_publisher() -> EventPublisher:
     """
     Dependency factory that returns the active EventPublisher provider.
     """
+    from src.core.taskiq import rabbitmq_broker
     return TaskiqRabbitMQEventPublisher(rabbitmq_broker)
 
 

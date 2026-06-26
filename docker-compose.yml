@@ -134,7 +134,7 @@ services:
       - ./services/api/src:/app/src
     env_file:
       - .env
-    command: taskiq worker src.core.taskiq:broker --fs-discover --reload
+    command: taskiq worker src.core.taskiq:broker --reload
 
   # Taskiq Scheduler
   scheduler:
@@ -164,7 +164,7 @@ services:
       - ./services/api/src:/app/src
     env_file:
       - .env
-    command: taskiq scheduler src.core.taskiq:scheduler --fs-discover
+    command: taskiq scheduler src.core.taskiq:scheduler
 
 volumes:
   postgres_data:

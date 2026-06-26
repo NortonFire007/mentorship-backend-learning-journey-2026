@@ -46,3 +46,10 @@ scheduler = TaskiqScheduler(
     sources=[LabelScheduleSource(broker)],
 )
 
+# === Task Registry ===
+# Import task modules to register them with the brokers upon initialization.
+import src.domains.subscriptions.tasks  # noqa: F401
+import src.domains.search_runs.tasks  # noqa: F401
+import src.domains.alerts.tasks  # noqa: F401
+
+
