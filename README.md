@@ -84,3 +84,27 @@ Once the application is running, you can access:
 - **API Base**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 - **Interactive API Docs (Swagger)**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 - **Health Check**: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
+
+---
+
+## External Adapters
+
+The platform uses an extensible adapter system to fetch pricing data from external providers (e.g. Apify, Airbnb). 
+
+### How to Register a New Provider
+
+1. **Implement the Adapter**: Create a new class in `services/api/src/adapters/providers/` that inherits from `BasePriceAdapter` (found in `src/adapters/base.py`). Define:
+   - `provider_name` (e.g. `"custom_provider"`)
+   - `execution_mode` (one of `"sync"`, `"async_webhook"`, or `"async_poll"`)
+   - Implement `dispatch` (for async webhook execution) or `fetch_prices` (for sync / polling execution)
+   - Implement `fetch_dataset` to parse results into standardized `PriceResult` objects.
+
+2. **Register the Adapter**: Add the adapter class to `ADAPTER_REGISTRY` in `services/api/src/adapters/registry.py`:
+   ```python
+   from src.adapters.providers.custom_provider import CustomProviderAdapter
+   
+   ADAPTER_REGISTRY = {
+       ...
+       "custom_provider": CustomProviderAdapter,
+   }
+   ```

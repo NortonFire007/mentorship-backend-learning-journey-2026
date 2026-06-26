@@ -4,6 +4,8 @@ from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.domains.alerts.models import Alert
 from src.domains.alerts.schemas import AlertCreate
+from src.domains.subscriptions.models import Subscription
+from src.core.events.events import AlertCreatedEvent
 
 class AlertRepository:
     def __init__(self, session: AsyncSession):
@@ -13,9 +15,34 @@ class AlertRepository:
         """
         Create a new alert record.
         """
-        alert = Alert(**alert_data.model_dump())
+
+        # Retrieve the subscription to get user_id and currency
+        stmt = select(Subscription).where(Subscription.id == alert_data.subscription_id)
+        res = await self.session.execute(stmt)
+        sub = res.scalar_one()
+
+        # Dump model data excluding any fields not in the Alert DB model
+        model_data = alert_data.model_dump(exclude={"deep_link"})
+        alert = Alert(**model_data)
+        if not alert.id:
+            alert.id = uuid.uuid4()
+
+        # Record domain event
+        alert.record_event(
+            AlertCreatedEvent(
+                alert_id=alert.id,
+                subscription_id=alert.subscription_id,
+                user_id=sub.user_id,
+                price_found=alert.price_found,
+                currency=sub.currency.value if hasattr(sub.currency, "value") else str(sub.currency),
+                deep_link=getattr(alert_data, "deep_link", None) or "",
+                image_url=alert.image_url,
+            )
+        )
+
         self.session.add(alert)
         await self.session.flush()
+
         return alert
 
     async def get_by_subscription(self, subscription_id: uuid.UUID, limit: int = 10) -> Sequence[Alert]:

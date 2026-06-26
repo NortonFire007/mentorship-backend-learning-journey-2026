@@ -3,7 +3,7 @@ import uuid
 from typing import TYPE_CHECKING
 from datetime import datetime, timezone
 from decimal import Decimal
-from sqlalchemy import DateTime, ForeignKey, Enum, Numeric, func
+from sqlalchemy import DateTime, ForeignKey, Enum, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.db.base import Base
 from src.core.enums import AlertStatus
@@ -25,6 +25,7 @@ class Alert(Base):
     )
     
     price_found: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    image_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     
     status: Mapped[AlertStatus] = mapped_column(
         Enum(

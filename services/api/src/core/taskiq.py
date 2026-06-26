@@ -1,8 +1,9 @@
 import taskiq_fastapi
 from taskiq_redis import RedisStreamBroker, RedisAsyncResultBackend
 from taskiq_aio_pika import AioPikaBroker
-from taskiq import SimpleRetryMiddleware
+from taskiq import SimpleRetryMiddleware, TaskiqScheduler
 from taskiq_dashboard import DashboardMiddleware
+from taskiq.schedule_sources import LabelScheduleSource
 
 from src.core.config import settings
 
@@ -32,10 +33,16 @@ rabbitmq_broker = AioPikaBroker(
 ).with_result_backend(result_backend)
 
 rabbitmq_broker.add_middlewares(
-    SimpleRetryMiddleware(default_retry_count=3),
+    SimpleRetryMiddleware(default_retry_count=3)
 )
 
 # 4. Initialize the FastAPI integration
 taskiq_fastapi.init(broker, "src.main:app")
 taskiq_fastapi.init(rabbitmq_broker, "src.main:app")
+
+# 5. Initialize the scheduler
+scheduler = TaskiqScheduler(
+    broker=broker,
+    sources=[LabelScheduleSource(broker)],
+)
 
