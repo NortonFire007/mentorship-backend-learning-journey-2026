@@ -19,6 +19,7 @@ class SubscriptionBase(BaseModel):
     # Financial data: strictly positive budget
     max_price: Decimal = Field(..., gt=0, decimal_places=2)
     currency: CurrencyEnum = CurrencyEnum.USD
+    provider: str | None = Field(default=None, max_length=255)
 
 class SubscriptionCreate(SubscriptionBase):
     """
@@ -53,6 +54,7 @@ class SubscriptionUpdate(BaseModel):
     max_price: Decimal | None = Field(default=None, gt=0, decimal_places=2)
     currency: CurrencyEnum | None = Field(default=None)
     is_active: bool | None = Field(default=None)
+    provider: str | None = Field(default=None, max_length=255)
 
 class SubscriptionRead(SubscriptionBase):
     """

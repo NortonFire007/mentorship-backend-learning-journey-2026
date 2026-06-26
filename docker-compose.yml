@@ -69,6 +69,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-mentorship_db}
     env_file:
       - .env
+    volumes:
+      - ./services/api/migrations:/app/migrations
+      - ./services/api/src:/app/src
     command: alembic upgrade head
 
   # FastAPI Application
@@ -133,8 +136,40 @@ services:
       - .env
     command: taskiq worker src.core.taskiq:broker --fs-discover --reload
 
+  # Taskiq Scheduler
+  scheduler:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    container_name: mentorship_scheduler
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_SERVER: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-mentorship_db}
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    volumes:
+      - ./services/api/src:/app/src
+    env_file:
+      - .env
+    command: taskiq scheduler src.core.taskiq:scheduler --fs-discover
+
 volumes:
   postgres_data:
+    name: mentorship_postgres_data
   redis_data:
+    name: mentorship_redis_data
 
 

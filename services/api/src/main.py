@@ -13,6 +13,7 @@ from src.domains.alerts.router import router as alerts_router
 from src.domains.tasks.router import router as tasks_router
 from src.domains.auth.router import router as auth_router
 from src.domains.webhooks.router import router as webhooks_router
+from src.db.init_db import create_first_superuser
 
 from src.core.security.redis_auth import get_redis_client, close_redis
 
@@ -30,6 +31,10 @@ async def lifespan(app: FastAPI):
         await broker.startup()
     if not rabbitmq_broker.is_worker_process:
         await rabbitmq_broker.startup()
+
+    # Seed initial database records (first superuser)
+    await create_first_superuser()
+
     yield
     # Close taskiq broker connections
     if not broker.is_worker_process:
