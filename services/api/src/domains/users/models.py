@@ -31,6 +31,12 @@ class User(Base):
     )
     
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    auth_provider: Mapped[str] = mapped_column(String(50), default="local", server_default="local")
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), 
         default=lambda: datetime.now(timezone.utc),

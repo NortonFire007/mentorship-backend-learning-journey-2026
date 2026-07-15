@@ -1,15 +1,21 @@
 import uuid
+from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from redis.asyncio import Redis
+
 from src.domains.users.repository import UserRepository
-from src.domains.users.schemas import UserCreate, UserUpdate
+from src.domains.users.schemas import UserCreate, UserUpdate, UserPasswordChange
 from src.domains.users.models import User
+from src.core.security.password import verify_password, hash_password
+from src.domains.auth.repository import RefreshTokenRepository
+from src.core.security.redis_auth import blacklist_token
 
 class UserService:
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, repository: UserRepository, session: AsyncSession):
+        self.repository = repository
         self.session = session
-        self.repository = UserRepository(session)
 
     async def create_user(self, user_data: UserCreate) -> User:
         """
@@ -92,4 +98,50 @@ class UserService:
             } 
             for user, count in results
         ]
+
+    async def change_password(
+        self,
+        user_id: uuid.UUID,
+        password_data: UserPasswordChange,
+        redis_client: Redis | None = None,
+    ) -> None:
+        """
+        Change user password after verifying the old password.
+        Revokes all active sessions (refresh tokens) for the user.
+        """
+        user = await self.get_user_by_id(user_id)
+
+        if user.auth_provider != "local":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This account uses social login and does not have a password"
+            )
+
+        is_valid = await verify_password(password_data.old_password, user.password_hash or "")
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Incorrect old password"
+            )
+
+        user.password_hash = await hash_password(password_data.new_password)
+        
+        refresh_token_repo = RefreshTokenRepository(self.session)
+        active_tokens = await refresh_token_repo.get_active_by_user(user_id)
+        
+        if active_tokens:
+            await refresh_token_repo.revoke_all_user(user_id)
+            
+            # If Redis is available, blacklist the JTI of all active refresh tokens
+            if redis_client:
+                now_ts = int(datetime.now(timezone.utc).timestamp())
+                for token in active_tokens:
+                    token_jti_str = str(token.jti)
+                    token_exp_ts = int(token.expires_at.replace(tzinfo=timezone.utc).timestamp())
+                    refresh_ttl = max(0, token_exp_ts - now_ts)
+                    if refresh_ttl > 0:
+                        await blacklist_token(redis_client, token_jti_str, "refresh", refresh_ttl)
+                        
+        await self.session.commit()
+
 

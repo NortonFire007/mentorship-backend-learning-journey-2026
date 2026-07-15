@@ -1,7 +1,7 @@
 import uuid
 from decimal import Decimal
 from typing import List, Tuple
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.domains.subscriptions.models import Subscription
 from src.domains.alerts.models import Alert
@@ -67,18 +67,18 @@ class SubscriptionRepository:
         """
         stmt = (
             select(Subscription.destination, func.count(Subscription.id).label("subscription_count"))
-            .where(Subscription.is_active == True)
+            .where(Subscription.is_active)
             .group_by(Subscription.destination)
             .order_by(func.count(Subscription.id).desc())
         )
         result = await self.session.execute(stmt)
         return [dict(row._mapping) for row in result.all()]
 
-    async def create(self, sub_data: SubscriptionCreate) -> Subscription:
+    async def create(self, sub_data: SubscriptionCreate, user_id: uuid.UUID) -> Subscription:
         """
         Create a new subscription record.
         """
-        sub = Subscription(**sub_data.model_dump())
+        sub = Subscription(user_id=user_id, **sub_data.model_dump())
         if not sub.id:
             sub.id = uuid.uuid4()
             
@@ -133,3 +133,20 @@ class SubscriptionRepository:
 
         result = await self.session.execute(stmt)
         return result.all()
+
+    async def count_owned_subscriptions(self, subscription_ids: List[uuid.UUID], user_id: uuid.UUID) -> int:
+        """
+        Count how many of the specified subscription IDs belong to the given user ID.
+        """
+        if not subscription_ids:
+            return 0
+        unique_ids = list(set(subscription_ids))
+        stmt = (
+            select(func.count(Subscription.id))
+            .where(
+                Subscription.id.in_(unique_ids),
+                Subscription.user_id == user_id
+            )
+        )
+        res = await self.session.execute(stmt)
+        return res.scalar() or 0

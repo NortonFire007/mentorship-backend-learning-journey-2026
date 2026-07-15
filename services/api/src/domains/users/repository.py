@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.domains.users.models import User
 from src.domains.subscriptions.models import Subscription
 from src.domains.users.schemas import UserCreate, UserUpdate
+from src.core.security.password import hash_password
 
 class UserRepository:
     
@@ -57,7 +58,14 @@ class UserRepository:
         """
         Create a new User record from validated creation schema.
         """
-        user = User(**user_data.model_dump())
+
+        data = user_data.model_dump()
+        password = data.pop("password", None)
+        
+        user = User(**data)
+        if password:
+            user.password_hash = await hash_password(password)
+            
         self.session.add(user)
         await self.session.flush()
         return user

@@ -1,11 +1,16 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends
 from src.core.taskiq import result_backend
 from taskiq import TaskiqResult
+from src.domains.auth.dependencies import get_current_user
+from src.domains.users.models import User
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 @router.get("/{task_id}")
-async def get_task_status(task_id: str):
+async def get_task_status(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
     """
     Get the status and result of a background task.
     """

@@ -25,7 +25,6 @@ class SubscriptionCreate(SubscriptionBase):
     Schema for creating a new subscription. 
     Strictly forbids past dates and invalid date ranges.
     """
-    user_id: uuid.UUID
 
     @field_validator("start_date")
     @classmethod

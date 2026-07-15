@@ -37,15 +37,34 @@ async def cleanup_db(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_trigger_import_endpoint(client: AsyncClient):
+async def test_trigger_import_endpoint(superuser_client: AsyncClient):
     """
-    Test that triggering the import endpoint starts a task and returns 202 status.
+    Test that triggering the import endpoint as a superuser starts a task and returns 202 status.
     """
-    response = await client.post("/api/v1/subscriptions/import?source_name=aviasales")
+    response = await superuser_client.post("/api/v1/subscriptions/import?source_name=aviasales")
     assert response.status_code == 202
     data = response.json()
     assert data["message"] == "Import task started"
     assert "task_id" in data
+
+
+@pytest.mark.asyncio
+async def test_trigger_import_endpoint_forbidden(verified_user_client: AsyncClient):
+    """
+    Test that triggering the import endpoint as a regular user returns 403 Forbidden.
+    """
+    response = await verified_user_client.post("/api/v1/subscriptions/import?source_name=aviasales")
+    assert response.status_code == 403
+    assert "superuser privileges" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_trigger_import_endpoint_unauthenticated(client: AsyncClient):
+    """
+    Test that triggering the import endpoint without authentication returns 401.
+    """
+    response = await client.post("/api/v1/subscriptions/import?source_name=aviasales")
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
