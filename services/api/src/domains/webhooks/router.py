@@ -26,7 +26,6 @@ async def apify_webhook_endpoint(
     """
     Webhook callback endpoint for Apify actor run completion.
     """
-    # 1. Token validation: compare query param token with settings.APIFY_WEBHOOK_SECRET
     if not settings.APIFY_WEBHOOK_SECRET or not secrets.compare_digest(token, settings.APIFY_WEBHOOK_SECRET):
         logger.warning("Unauthorized access attempt to Apify webhook: invalid or missing token.")
         raise HTTPException(
@@ -38,7 +37,6 @@ async def apify_webhook_endpoint(
         run_id = payload.eventData.actorRunId
         event_type = payload.eventType
         
-        # 2. Look up SearchRun
         search_run = await search_run_repo.get_by_external_run_id(run_id)
         if not search_run:
             logger.error(f"SearchRun with external_run_id '{run_id}' not found.")
@@ -47,17 +45,14 @@ async def apify_webhook_endpoint(
                 detail=f"SearchRun with external_run_id '{run_id}' not found."
             )
 
-        # 3. Process eventType
         if event_type == "ACTOR.RUN.SUCCEEDED":
             # Idempotency check: if already completed, do nothing and return HTTP 200
             if search_run.status == SearchRunStatus.COMPLETED:
                 logger.info(f"SearchRun '{run_id}' already COMPLETED. Skipping duplicate callback.")
                 return {"message": "Webhook processed successfully (duplicate)"}
 
-            # Update status to COMPLETED
             await search_run_repo.update_status(search_run, SearchRunStatus.COMPLETED)
             
-            # Commit immediately to database to ensure status is saved before enqueuing task
             await db.commit()
 
             # Enqueue the evaluation taskiq task
@@ -82,7 +77,6 @@ async def apify_webhook_endpoint(
             logger.info(f"SearchRun '{run_id}' marked COMPLETED. Evaluation task enqueued for dataset '{dataset_id}'.")
 
         elif event_type == "ACTOR.RUN.FAILED":
-            # Update status to FAILED
             await search_run_repo.update_status(search_run, SearchRunStatus.FAILED)
             await db.commit()
             logger.warning(f"SearchRun '{run_id}' marked FAILED via webhook.")
