@@ -16,6 +16,7 @@ class AlertCreate(AlertBase):
 class AlertRead(AlertBase):
     id: UUID
     subscription_id: UUID
+    deep_link: str | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

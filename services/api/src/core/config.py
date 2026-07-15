@@ -24,7 +24,11 @@ class Settings(BaseSettings):
     # Taskiq Configurations
     TASKIQ_DASHBOARD_TOKEN: str = os.getenv("TASKIQ_DASHBOARD_TOKEN", "supersecret")
     TASKIQ_DASHBOARD_PATH: str = os.getenv("TASKIQ_DASHBOARD_PATH", "/admin")
-    TASKIQ_DASHBOARD_URL: str = os.getenv("TASKIQ_DASHBOARD_URL", "http://localhost:8000/admin")
+    TASKIQ_DASHBOARD_URL: str = os.getenv("TASKIQ_DASHBOARD_URL", "http://localhost:8000/admin/")
+    TASKIQ_DASHBOARD_DB_DSN: str = os.getenv(
+        "TASKIQ_DASHBOARD_DB_DSN",
+        "sqlite+aiosqlite:///taskiq_dashboard.db" if os.name == "nt" else "sqlite+aiosqlite:////tmp/taskiq_dashboard.db"
+    )
     TASKIQ_WORKER_RELOAD: bool = os.getenv("TASKIQ_WORKER_RELOAD", "True").lower() == "true"
 
     # JWT Settings

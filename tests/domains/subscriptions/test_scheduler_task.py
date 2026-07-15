@@ -2,12 +2,13 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from unittest.mock import patch, AsyncMock
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.enums import CurrencyEnum, SearchRunStatus
 from src.domains.subscriptions.models import Subscription
 from src.domains.search_runs.models import SearchRun
+from src.domains.alerts.models import Alert
 from src.domains.subscriptions.tasks import poll_all_active_subscriptions_task
 from tests.factories import SubscriptionFactory
 
@@ -18,6 +19,12 @@ async def test_poll_all_active_subscriptions_success(db_session: AsyncSession):
     Test that poll_all_active_subscriptions_task selects only eligible active subscriptions,
     bulk updates their last_checked_at timestamp, dispatches jobs, and inserts SearchRun records.
     """
+    # 0. Clean up pre-existing database rows to isolate this test
+    await db_session.execute(delete(Alert))
+    await db_session.execute(delete(SearchRun))
+    await db_session.execute(delete(Subscription))
+    await db_session.commit()
+
     # 1. Setup subscription records
     now = datetime.now(timezone.utc)
 
@@ -107,7 +114,9 @@ async def test_poll_all_active_subscriptions_success(db_session: AsyncSession):
     assert res5.scalar_one().last_checked_at is None
 
     # 5. Verify SearchRun records created
-    search_runs_res = await db_session.execute(select(SearchRun))
+    search_runs_res = await db_session.execute(
+        select(SearchRun).where(SearchRun.subscription_id.in_([sub1.id, sub2.id]))
+    )
     search_runs = search_runs_res.scalars().all()
     assert len(search_runs) == 2
 

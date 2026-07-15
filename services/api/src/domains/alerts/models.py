@@ -26,6 +26,7 @@ class Alert(Base):
     
     price_found: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     image_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    deep_link: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     
     status: Mapped[AlertStatus] = mapped_column(
         Enum(

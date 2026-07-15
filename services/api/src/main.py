@@ -18,6 +18,15 @@ from src.db.init_db import create_first_superuser
 from src.core.security.redis_auth import get_redis_client, close_redis
 
 
+# Initialize Taskiq Dashboard (instantiated early so it is available in lifespan)
+dashboard = TaskiqDashboard(
+    api_token=settings.TASKIQ_DASHBOARD_TOKEN,
+    storage_type="sqlite",
+    database_dsn=settings.TASKIQ_DASHBOARD_DB_DSN,
+    broker=broker,
+)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Generate dummy hash for timing attack defense
@@ -35,7 +44,16 @@ async def lifespan(app: FastAPI):
     # Seed initial database records (first superuser)
     await create_first_superuser()
 
-    yield
+    # Execute taskiq-dashboard sub-app lifespan manually since FastAPI mount does not trigger it.
+    # IMPORTANT: Only run dashboard lifespan in the API server process, NOT in the worker process.
+    # In the worker, dashboard.application.lifespan internally calls broker.startup(), which
+    # fires WORKER_STARTUP events again → re-entering this lifespan → infinite recursion.
+    if not broker.is_worker_process:
+        async with dashboard.application.router.lifespan_context(dashboard.application):
+            yield
+    else:
+        yield
+
     # Close taskiq broker connections
     if not broker.is_worker_process:
         await broker.shutdown()
@@ -44,6 +62,7 @@ async def lifespan(app: FastAPI):
         
     # Close Redis connection pool
     await close_redis()
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -60,12 +79,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize and mount Taskiq Dashboard
-dashboard = TaskiqDashboard(
-    api_token=settings.TASKIQ_DASHBOARD_TOKEN,
-    storage_type="sqlite",
-    broker=broker,
-)
 app.mount(settings.TASKIQ_DASHBOARD_PATH, dashboard.application)
 
 app.include_router(auth_router, prefix=settings.API_V1_STR)

@@ -1,6 +1,6 @@
 import uuid
 from typing import List, Sequence
-from sqlalchemy import select, desc
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.domains.alerts.models import Alert
 from src.domains.alerts.schemas import AlertCreate
@@ -21,8 +21,7 @@ class AlertRepository:
         res = await self.session.execute(stmt)
         sub = res.scalar_one()
 
-        # Dump model data excluding any fields not in the Alert DB model
-        model_data = alert_data.model_dump(exclude={"deep_link"})
+        model_data = alert_data.model_dump()
         alert = Alert(**model_data)
         if not alert.id:
             alert.id = uuid.uuid4()

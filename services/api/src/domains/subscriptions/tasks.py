@@ -180,6 +180,14 @@ async def evaluate_apify_results_task(
     """
     logger.info(f"Starting price evaluation for subscription {subscription_id} and dataset {dataset_id}")
 
+    # 0. Guard: dataset_id must be a non-empty string
+    if not dataset_id or not dataset_id.strip():
+        logger.error(
+            f"evaluate_apify_results_task called with empty dataset_id for subscription {subscription_id}. "
+            "This means Apify did not produce a dataset. Aborting without retry."
+        )
+        return
+
     # 1. Load subscription
     stmt = select(Subscription).where(Subscription.id == subscription_id)
     res = await db.execute(stmt)
@@ -316,7 +324,13 @@ async def poll_all_active_subscriptions_task(
             provider=sub.provider,
             destination=sub.destination,
             start_date=sub.start_date,
-            end_date=sub.end_date
+            end_date=sub.end_date,
+            adults=sub.adults,
+            children=sub.children,
+            min_bedrooms=sub.min_bedrooms,
+            min_beds=sub.min_beds,
+            flexible_days=sub.flexible_days,
+            max_stops=sub.max_stops
         ))
 
     # 3. Bulk update last_checked_at first to serve as a distributed mutex

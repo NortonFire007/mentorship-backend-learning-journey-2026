@@ -61,12 +61,25 @@ async def apify_webhook_endpoint(
             await db.commit()
 
             # Enqueue the evaluation taskiq task
-            dataset_id = payload.eventData.defaultDatasetId or ""
+            dataset_id = payload.eventData.defaultDatasetId
+            if not dataset_id and payload.resource:
+                dataset_id = payload.resource.defaultDatasetId
+
+            if not dataset_id:
+                # Apify did not return a dataset — treat as FAILED, don't enqueue
+                logger.error(
+                    f"SearchRun '{run_id}' succeeded but Apify returned no dataset ID. "
+                    "Marking as FAILED to prevent pointless retries."
+                )
+                await search_run_repo.update_status(search_run, SearchRunStatus.FAILED)
+                await db.commit()
+                return {"message": "Webhook acknowledged but no dataset to evaluate"}
+
             await evaluate_apify_results_task.kiq(
                 subscription_id=search_run.subscription_id,
                 dataset_id=dataset_id
             )
-            logger.info(f"SearchRun '{run_id}' marked COMPLETED. Evaluation task enqueued.")
+            logger.info(f"SearchRun '{run_id}' marked COMPLETED. Evaluation task enqueued for dataset '{dataset_id}'.")
 
         elif event_type == "ACTOR.RUN.FAILED":
             # Update status to FAILED

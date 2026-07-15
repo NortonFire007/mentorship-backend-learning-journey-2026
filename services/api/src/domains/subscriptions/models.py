@@ -3,7 +3,7 @@ import uuid
 from typing import TYPE_CHECKING
 from datetime import datetime, date, timezone
 from decimal import Decimal
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum, Date, Numeric, func, Index
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum, Date, Numeric, Integer, func, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.db.base import Base
 from src.core.enums import TravelType, CurrencyEnum
@@ -58,6 +58,14 @@ class Subscription(Base):
         default=CurrencyEnum.USD,
         server_default=CurrencyEnum.USD.value
     )
+    
+    # Search parameters
+    adults: Mapped[int] = mapped_column(Integer, default=1, server_default="1", nullable=False)
+    children: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    min_bedrooms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    min_beds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    flexible_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_stops: Mapped[int | None] = mapped_column(Integer, nullable=True)
     
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     provider: Mapped[str | None] = mapped_column(String(255), nullable=True)

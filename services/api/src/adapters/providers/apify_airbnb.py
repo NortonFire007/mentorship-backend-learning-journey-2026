@@ -39,12 +39,19 @@ class ApifyAirbnbAdapter(BasePriceAdapter):
         actor_input = {
             "locationQueries": [subscription.destination],
             "maxListings": settings.APIFY_MAX_LISTINGS,
-            "skipDetailPages": True
+            "skipDetailPages": True,
+            "adults": getattr(subscription, "adults", 1),
+            "children": getattr(subscription, "children", 0),
+            "minBedrooms": getattr(subscription, "min_bedrooms", None),
+            "minBeds": getattr(subscription, "min_beds", None)
         }
         if subscription.start_date:
             actor_input["checkIn"] = subscription.start_date.isoformat()
         if subscription.end_date:
             actor_input["checkOut"] = subscription.end_date.isoformat()
+
+        # Completely filter out keys with None values to satisfy Apify strict schemas
+        actor_input = {k: v for k, v in actor_input.items() if v is not None}
 
         url = f"https://api.apify.com/v2/acts/{settings.APIFY_ACTOR_ID}/runs?webhooks={webhooks_b64}"
         headers = {
@@ -107,28 +114,57 @@ class ApifyAirbnbAdapter(BasePriceAdapter):
         results = []
         for item in items:
             try:
-                price_val = item.get("price")
-                currency_val = item.get("currency")
-                url_val = item.get("url")
-                dest_val = item.get("location") or item.get("city")
+                # --- Price ---
+                # Apify Airbnb actor returns price as a nested object:
+                # {"price": "$521 for 5 nights", "label": "...", "breakDown": {...}}
+                # We prefer the discountedPrice if available, otherwise the base price string.
+                price_obj = item.get("price") or {}
+                if isinstance(price_obj, dict):
+                    raw_price_str = (
+                        price_obj.get("discountedPrice")
+                        or price_obj.get("price")
+                        or ""
+                    )
+                else:
+                    # Fallback: price was a bare number or string
+                    raw_price_str = str(price_obj)
 
-                if price_val is None or not currency_val or not url_val or not dest_val:
-                    logger.warning(f"Skipping malformed dataset item: {item}")
+                # Strip currency symbol and any trailing text ("$521 for 5 nights" → "521")
+                raw_price_str = raw_price_str.replace("$", "").replace(",", "").split()[0]
+
+                if not raw_price_str:
+                    logger.warning(f"Skipping item — could not extract price: {item.get('url')}")
                     continue
 
+                # --- Currency ---
+                # Airbnb Apify actor does not expose a "currency" field; prices are in USD.
+                currency_val = item.get("currency", "USD")
                 try:
                     currency_normalized = CurrencyEnum(currency_val.upper())
                 except ValueError:
                     logger.warning(f"Skipping item due to unsupported currency: {currency_val}")
                     continue
 
-                try:
-                    price_decimal = Decimal(str(price_val))
-                except (InvalidOperation, ValueError):
-                    logger.warning(f"Skipping item due to invalid price: {price_val}")
+                # --- Destination ---
+                # Use roomType (e.g. "Room in London") → extract city after "in "
+                room_type = item.get("roomType", "")
+                if " in " in room_type:
+                    dest_val = room_type.split(" in ", 1)[-1]
+                else:
+                    dest_val = item.get("location") or item.get("city") or item.get("title") or item.get("url") or ""
+
+                url_val = item.get("url")
+                if not url_val:
+                    logger.warning(f"Skipping item — missing URL: {item}")
                     continue
 
-                # Map dates if present
+                try:
+                    price_decimal = Decimal(raw_price_str)
+                except (InvalidOperation, ValueError):
+                    logger.warning(f"Skipping item due to invalid price string: {raw_price_str!r}")
+                    continue
+
+                # --- Dates ---
                 departure_date = None
                 return_date = None
                 for date_key in ("checkIn", "start_date", "departure_date"):
@@ -164,6 +200,7 @@ class ApifyAirbnbAdapter(BasePriceAdapter):
                 logger.warning(f"Unexpected error parsing dataset item: {e}. Item: {item}")
 
         return results
+
 
     async def fetch_prices(self, *args, **kwargs) -> list[PriceResult]:
         raise NotImplementedError("ApifyAirbnbAdapter does not support fetch_prices directly.")

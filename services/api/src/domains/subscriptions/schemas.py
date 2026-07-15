@@ -20,6 +20,14 @@ class SubscriptionBase(BaseModel):
     max_price: Decimal = Field(..., gt=0, decimal_places=2)
     currency: CurrencyEnum = CurrencyEnum.USD
     provider: str | None = Field(default=None, max_length=255)
+    
+    # Search filters
+    adults: int = Field(default=1, ge=1, le=16)
+    children: int = Field(default=0, ge=0, le=16)
+    min_bedrooms: int | None = Field(default=None, ge=0, le=10)
+    min_beds: int | None = Field(default=None, ge=0, le=16)
+    flexible_days: int | None = Field(default=None, ge=0, le=14)
+    max_stops: int | None = Field(default=None, ge=0, le=3)
 
 class SubscriptionCreate(SubscriptionBase):
     """
@@ -55,6 +63,14 @@ class SubscriptionUpdate(BaseModel):
     currency: CurrencyEnum | None = Field(default=None)
     is_active: bool | None = Field(default=None)
     provider: str | None = Field(default=None, max_length=255)
+    
+    # Search filters
+    adults: int | None = Field(default=None, ge=1, le=16)
+    children: int | None = Field(default=None, ge=0, le=16)
+    min_bedrooms: int | None = Field(default=None, ge=0, le=10)
+    min_beds: int | None = Field(default=None, ge=0, le=16)
+    flexible_days: int | None = Field(default=None, ge=0, le=14)
+    max_stops: int | None = Field(default=None, ge=0, le=3)
 
 class SubscriptionRead(SubscriptionBase):
     """

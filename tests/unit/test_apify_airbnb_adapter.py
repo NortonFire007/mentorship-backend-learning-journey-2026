@@ -244,3 +244,42 @@ async def test_health_check_fails_gracefully():
          patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
         mock_get.side_effect = httpx.ConnectError("Connection failed")
         assert await adapter.health_check() is False
+
+
+@pytest.mark.asyncio
+async def test_dispatch_includes_search_filters_and_filters_none():
+    """Verify that dispatch maps adults, children, min_bedrooms, and min_beds, and filters None values."""
+    sub = Subscription(
+        destination="Kyiv, Ukraine",
+        adults=2,
+        children=1,
+        min_bedrooms=2,
+        min_beds=None  # This must be excluded from the final actor_input payload
+    )
+
+    adapter = ApifyAirbnbAdapter()
+    
+    mock_response = MagicMock()
+    mock_response.status_code = 201
+    mock_response.json.return_value = {"data": {"id": "run-999"}}
+
+    with patch("src.core.config.settings.APIFY_API_TOKEN", "token123"), \
+         patch("src.core.config.settings.APIFY_WEBHOOK_SECRET", "secret123"), \
+         patch("src.core.config.settings.BASE_URL", "http://testserver"), \
+         patch("src.core.config.settings.APIFY_MAX_LISTINGS", 10), \
+         patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+        
+        mock_post.return_value = mock_response
+        run_id = await adapter.dispatch(sub)
+        
+        assert run_id == "run-999"
+        mock_post.assert_called_once()
+        
+        json_body = mock_post.call_args[1]["json"]
+        assert json_body["locationQueries"] == ["Kyiv, Ukraine"]
+        assert json_body["adults"] == 2
+        assert json_body["children"] == 1
+        assert json_body["minBedrooms"] == 2
+        assert "minBeds" not in json_body  # None values should be filtered out
+        assert "flexible_days" not in json_body
+        assert "max_stops" not in json_body
