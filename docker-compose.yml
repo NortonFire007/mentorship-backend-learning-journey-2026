@@ -96,6 +96,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-mentorship_db}
       DEBUG: "True"
       REDIS_URL: redis://redis:6379/0
+      REDIS_AUTH_URL: redis://redis:6379/1
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     ports:
       - "8000:8000"
@@ -128,6 +129,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-mentorship_db}
       REDIS_URL: redis://redis:6379/0
+      REDIS_AUTH_URL: redis://redis:6379/1
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
       TASKIQ_DASHBOARD_URL: http://api:8000/admin/
     volumes:
@@ -159,12 +161,44 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-mentorship_db}
       REDIS_URL: redis://redis:6379/0
+      REDIS_AUTH_URL: redis://redis:6379/1
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     volumes:
       - ./services/api/src:/app/src
     env_file:
       - .env
     command: taskiq scheduler src.core.taskiq:scheduler
+
+  # Telegram Bot
+  bot:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    container_name: mentorship_bot
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_SERVER: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-mentorship_db}
+      REDIS_URL: redis://redis:6379/0
+      REDIS_AUTH_URL: redis://redis:6379/1
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    volumes:
+      - ./services/api/src:/app/src
+    env_file:
+      - .env
+    command: python -m src.bot.main
 
 volumes:
   postgres_data:
