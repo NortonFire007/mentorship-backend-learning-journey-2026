@@ -13,7 +13,7 @@ async def test_update_user_success(verified_user_client: AsyncClient, db_session
 
     payload = {
         "preferred_currency": "EUR",
-        "telegram_id": "88888888"
+        "telegram_chat_id": 88888888
     }
 
     response = await verified_user_client.patch(f"/api/v1/users/{user.id}", json=payload)
@@ -21,7 +21,7 @@ async def test_update_user_success(verified_user_client: AsyncClient, db_session
     assert response.status_code == 200
     data = response.json()
     assert data["preferred_currency"] == "EUR"
-    assert data["telegram_id"] == "88888888"
+    assert data["telegram_chat_id"] == 88888888
     assert data["email"] == user.email
 
 @pytest.mark.asyncio

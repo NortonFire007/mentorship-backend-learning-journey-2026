@@ -45,7 +45,7 @@ class UserFactory(factory.Factory, AsyncFactoryMixin):
     name = factory.LazyFunction(fake.first_name)
     surname = factory.LazyFunction(fake.last_name)
     email = factory.LazyAttribute(lambda o: f"{o.name.lower()}.{o.surname.lower()}_{fake.random_int()}@{fake.domain_name()}")
-    telegram_id = factory.LazyFunction(lambda: str(fake.random_int(min=10000000, max=99999999)))
+    telegram_chat_id = factory.LazyFunction(lambda: fake.random_int(min=10000000, max=99999999))
     preferred_currency = CurrencyEnum.USD
     is_active = True
 

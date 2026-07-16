@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from redis.asyncio import Redis
+from src.core.config import settings
 
 from src.domains.users.repository import UserRepository
 from src.domains.users.schemas import UserCreate, UserUpdate, UserPasswordChange
@@ -143,5 +144,18 @@ class UserService:
                         await blacklist_token(redis_client, token_jti_str, "refresh", refresh_ttl)
                         
         await self.session.commit()
+
+    async def generate_telegram_link(
+        self,
+        user_id: uuid.UUID,
+        redis_client: Redis,
+    ) -> str:
+        """
+        Generate a deep link for linking the user account to a Telegram chat.
+        Stores a UUID token in Redis with a 15-minute TTL.
+        """
+        token = str(uuid.uuid4())
+        await redis_client.set(f"tg_link:{token}", str(user_id), ex=900)
+        return f"https://t.me/{settings.TELEGRAM_BOT_USERNAME}?start={token}"
 
 

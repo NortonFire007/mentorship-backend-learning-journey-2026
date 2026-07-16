@@ -2,7 +2,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 from datetime import datetime, timezone
-from sqlalchemy import String, Boolean, DateTime, func, Enum
+from sqlalchemy import String, Boolean, DateTime, func, Enum, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.db.base import Base
 from src.core.enums import CurrencyEnum
@@ -22,7 +22,7 @@ class User(Base):
     
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     
-    telegram_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger, unique=True, nullable=True)
     
     preferred_currency: Mapped[CurrencyEnum] = mapped_column(
         Enum(CurrencyEnum, name="currency_enum", create_type=False),
