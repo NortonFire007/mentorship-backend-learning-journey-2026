@@ -1,5 +1,7 @@
+import enum
 import uuid
 import dataclasses
+from decimal import Decimal
 from datetime import datetime
 from taskiq.kicker import AsyncKicker
 from taskiq_aio_pika import AioPikaBroker
@@ -15,13 +17,17 @@ class TaskiqRabbitMQEventPublisher(EventPublisher):
         Converts the dataclass event to a JSON-serializable dictionary.
         """
         event_dict = dataclasses.asdict(event)
-        
+
         # Ensure datetime and other complex fields are JSON-serializable
         for key, value in event_dict.items():
             if isinstance(value, datetime):
                 event_dict[key] = value.isoformat()
             elif isinstance(value, uuid.UUID):
                 event_dict[key] = str(value)
+            elif isinstance(value, Decimal):
+                event_dict[key] = str(value)
+            elif isinstance(value, enum.Enum):
+                event_dict[key] = value.value
 
         kicker = AsyncKicker(
             task_name=routing_key,

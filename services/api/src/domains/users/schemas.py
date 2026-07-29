@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, computed_field, ConfigDict, field_validator
+from pydantic import BaseModel, EmailStr, computed_field, ConfigDict
 from src.core.enums import CurrencyEnum
+from src.core.validators import PasswordStr
 from src.domains.subscriptions.schemas import SubscriptionRead
 
 class UserBase(BaseModel):
@@ -18,7 +19,7 @@ class UserCreate(UserBase):
     """
     Schema for creating a new user.
     """
-    password: str
+    password: PasswordStr
 
 class UserUpdate(BaseModel):
     """
@@ -67,20 +68,6 @@ class UserPasswordChange(BaseModel):
     Schema for changing a user's password.
     """
     old_password: str
-    new_password: str
-
-    @field_validator("new_password")
-    @classmethod
-    def validate_password_strength(cls, v: str) -> str:
-        import re
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters long")
-        if not re.search(r"[A-Z]", v):
-            raise ValueError("Password must contain at least one uppercase letter")
-        if not re.search(r"\d", v):
-            raise ValueError("Password must contain at least one digit")
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
-            raise ValueError("Password must contain at least one special character")
-        return v
+    new_password: PasswordStr
 
 

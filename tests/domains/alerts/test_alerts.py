@@ -17,7 +17,8 @@ async def test_create_alert_superuser(superuser_client: AsyncClient, db_session:
     payload = {
         "subscription_id": str(sub.id),
         "price_found": "350.00",
-        "status": AlertStatus.PENDING.value
+        "status": AlertStatus.PENDING.value,
+        "deep_link": "https://example.com/deal"
     }
     
     response = await superuser_client.post("/api/v1/alerts/", json=payload)
@@ -50,13 +51,19 @@ async def test_get_subscription_alerts_owner(verified_user_client: AsyncClient, 
     """
     user = verified_user_client.user
     sub = await SubscriptionFactory.acreate(db_session, user=user)
-    await AlertFactory.acreate(db_session, subscription=sub, price_found=Decimal("300.00"))
+    await AlertFactory.acreate(
+        db_session, 
+        subscription=sub, 
+        price_found=Decimal("300.00"),
+        deep_link="https://example.com/deal"
+    )
 
     response = await verified_user_client.get(f"/api/v1/alerts/subscription/{sub.id}")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
     assert data[0]["price_found"] == "300.00"
+    assert data[0]["deep_link"] == "https://example.com/deal"
 
 @pytest.mark.asyncio
 async def test_get_subscription_alerts_forbidden(verified_user_client: AsyncClient, db_session: AsyncSession):

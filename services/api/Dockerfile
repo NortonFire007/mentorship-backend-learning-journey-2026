@@ -10,7 +10,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/opt/venv
 
 WORKDIR /app
 
@@ -37,13 +38,13 @@ FROM python:3.13-slim AS runner
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/app/.venv/bin:$PATH"
+    PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
 
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
-COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /opt/venv /opt/venv
 
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/migrations ./migrations

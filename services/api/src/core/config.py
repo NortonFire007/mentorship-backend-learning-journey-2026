@@ -24,7 +24,11 @@ class Settings(BaseSettings):
     # Taskiq Configurations
     TASKIQ_DASHBOARD_TOKEN: str = os.getenv("TASKIQ_DASHBOARD_TOKEN", "supersecret")
     TASKIQ_DASHBOARD_PATH: str = os.getenv("TASKIQ_DASHBOARD_PATH", "/admin")
-    TASKIQ_DASHBOARD_URL: str = os.getenv("TASKIQ_DASHBOARD_URL", "http://localhost:8000/admin")
+    TASKIQ_DASHBOARD_URL: str = os.getenv("TASKIQ_DASHBOARD_URL", "http://localhost:8000/admin/")
+    TASKIQ_DASHBOARD_DB_DSN: str = os.getenv(
+        "TASKIQ_DASHBOARD_DB_DSN",
+        "sqlite+aiosqlite:///taskiq_dashboard.db" if os.name == "nt" else "sqlite+aiosqlite:////tmp/taskiq_dashboard.db"
+    )
     TASKIQ_WORKER_RELOAD: bool = os.getenv("TASKIQ_WORKER_RELOAD", "True").lower() == "true"
 
     # JWT Settings
@@ -32,6 +36,10 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
+
+    # First Superuser Settings
+    FIRST_SUPERUSER_EMAIL: str = os.getenv("FIRST_SUPERUSER_EMAIL", "admin@example.com")
+    FIRST_SUPERUSER_PASSWORD: str = os.getenv("FIRST_SUPERUSER_PASSWORD", "adminpassword")
 
     # Auth Redis
     REDIS_AUTH_URL: str = os.getenv("REDIS_AUTH_URL", "redis://localhost:6379/1")
@@ -43,6 +51,16 @@ class Settings(BaseSettings):
 
     # CORS
     CORS_ALLOWED_ORIGINS: list[str] | str = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+    # Apify Settings
+    BASE_URL: str = os.getenv("BASE_URL", "http://localhost:8000")
+    APIFY_API_TOKEN: str | None = os.getenv("APIFY_API_TOKEN", None)
+    APIFY_WEBHOOK_SECRET: str | None = os.getenv("APIFY_WEBHOOK_SECRET", None)
+    APIFY_ACTOR_ID: str = os.getenv("APIFY_ACTOR_ID", "automation-lab~airbnb-listing")
+    APIFY_MAX_LISTINGS: int = int(os.getenv("APIFY_MAX_LISTINGS", "50"))
+    APIFY_POLL_INTERVAL_MINUTES: int = int(os.getenv("APIFY_POLL_INTERVAL_MINUTES", "360"))
+    APIFY_POLL_BATCH_SIZE: int = int(os.getenv("APIFY_POLL_BATCH_SIZE", "50"))
+    APIFY_SUBSCRIPTION_RECHECK_HOURS: int = int(os.getenv("APIFY_SUBSCRIPTION_RECHECK_HOURS", "24"))
 
     @field_validator("CORS_ALLOWED_ORIGINS", mode="before")
     @classmethod

@@ -7,13 +7,16 @@ from src.core.enums import AlertStatus
 class AlertBase(BaseModel):
     price_found: Decimal
     status: AlertStatus = AlertStatus.PENDING
+    image_url: str | None = None
 
 class AlertCreate(AlertBase):
     subscription_id: UUID
+    deep_link: str | None = None
 
 class AlertRead(AlertBase):
     id: UUID
     subscription_id: UUID
+    deep_link: str | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

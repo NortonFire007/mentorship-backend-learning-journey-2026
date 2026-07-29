@@ -8,7 +8,12 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from unittest.mock import patch, AsyncMock
 from taskiq import InMemoryBroker
 
-# Initialize InMemoryBroker for tests and patch globally before loading main application
+# Initialize InMemoryBroker for tests and patch globally before loading main application.
+# IMPORTANT: Any modules that register tasks using decorators (like `@broker.task(...)`) must be
+# imported AFTER starting the patch. If imported BEFORE starting the patch, they will bind to
+# the original RedisStreamBroker instance rather than our InMemoryBroker, causing tests to connect
+# to actual Redis and fail. Therefore, we import src.main (which loads tasks modules) after starting the patches.
+import src.core.taskiq
 test_broker = InMemoryBroker()
 test_result_backend = test_broker.result_backend
 

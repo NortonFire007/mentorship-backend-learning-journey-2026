@@ -81,4 +81,6 @@ class AlertFactory(factory.Factory, AsyncFactoryMixin):
     id = factory.LazyFunction(uuid.uuid4)
     subscription = factory.SubFactory(SubscriptionFactory)
     price_found = factory.LazyFunction(lambda: Decimal(fake.random_int(min=100, max=1000)))
+    image_url = factory.LazyFunction(fake.image_url)
+    deep_link = factory.LazyFunction(fake.url)
     status = AlertStatus.SENT

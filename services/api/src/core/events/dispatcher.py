@@ -1,5 +1,6 @@
 import logging
 from typing import List
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.events.base import EventPublisher, Event
 from src.core.events.mixin import EventRecordableMixin
@@ -31,11 +32,27 @@ class EventDispatcher:
 
         session.commit = intercept_commit
 
+        def before_flush(sync_session, flush_context, instances):
+            # Scan for events on new/dirty objects in the session before they are flushed
+            # and could potentially be garbage collected (due to weak references in identity map).
+            events = []
+            for obj in set(sync_session.new) | set(sync_session.dirty) | set(sync_session.identity_map.values()):
+                if isinstance(obj, EventRecordableMixin):
+                    events.extend(obj.collect_events())
+            session._events_to_publish.extend(events)
+
+        event.listen(session.sync_session, "before_flush", before_flush)
+
     def extract_events(self, session: AsyncSession) -> List[Event]:
         """
         Scans all dirty/loaded models in a session and extracts events BEFORE commit.
+        Also gathers events already extracted during session flushes.
         """
         events_to_publish = []
+        if hasattr(session, "_events_to_publish"):
+            events_to_publish.extend(session._events_to_publish)
+            session._events_to_publish.clear()
+
         all_objects = set(session.identity_map.values()) | set(session.new) | set(session.dirty)
         
         for obj in all_objects:
@@ -69,4 +86,6 @@ class EventDispatcher:
             return "subscriptions.subscription.created"
         elif name == "DigestRequestedEvent":
             return "notifications.digest.requested"
+        elif name == "AlertCreatedEvent":
+            return "alerts.alert.created"
         return "events.unknown"
