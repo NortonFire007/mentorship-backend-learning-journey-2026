@@ -1,0 +1,96 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "newSubscription": "New Subscription",
+    "settings": "Settings",
+    "logout": "Log out"
+  },
+  "auth": {
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Sign in to manage your travel alerts",
+    "registerTitle": "Create an account",
+    "registerSubtitle": "Start monitoring prices across top booking platforms",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "alex@example.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "••••••••",
+    "nameLabel": "First name",
+    "namePlaceholder": "Alex",
+    "surnameLabel": "Last name",
+    "surnamePlaceholder": "Smith",
+    "submitLogin": "Sign in",
+    "submitRegister": "Create account",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "signUpLink": "Sign up",
+    "signInLink": "Sign in",
+    "invalidCredentials": "Invalid email or password",
+    "emailInUse": "Email address is already in use"
+  },
+  "dashboard": {
+    "title": "Travel Subscriptions",
+    "subtitle": "Active alert configurations and recent price findings",
+    "newSubscriptionBtn": "New Subscription",
+    "activeSubscriptions": "Active Subscriptions",
+    "noSubscriptionsTitle": "No subscriptions created yet",
+    "noSubscriptionsDesc": "Create your first price alert subscription to start tracking travel deals.",
+    "recentAlerts": "Recent Price Alerts",
+    "noAlertsTitle": "No price alerts yet",
+    "noAlertsDesc": "The platform automatically searches for matching deals and alerts will appear here."
+  },
+  "subscription": {
+    "card": {
+      "active": "Active",
+      "paused": "Paused",
+      "pauseBtn": "Pause",
+      "activateBtn": "Activate",
+      "deleteBtn": "Delete",
+      "deleteConfirmTitle": "Delete subscription?",
+      "deleteConfirmDesc": "This action cannot be undone. You will stop receiving alerts for this destination.",
+      "confirm": "Confirm Delete",
+      "cancel": "Cancel"
+    },
+    "wizard": {
+      "step1Title": "Where & What",
+      "step2Title": "When & Who",
+      "step3Title": "Budget & Filters",
+      "destinationLabel": "Destination",
+      "destinationPlaceholder": "e.g. Paris, France or Rome",
+      "travelTypeLabel": "Travel Type",
+      "providerLabel": "Provider",
+      "dateRangeLabel": "Date Range (Optional)",
+      "adultsLabel": "Adults",
+      "childrenLabel": "Children",
+      "flexibleDaysLabel": "Flexible Days",
+      "maxPriceLabel": "Max Price",
+      "currencyLabel": "Currency",
+      "advancedFilters": "Advanced Filters",
+      "minBedroomsLabel": "Min Bedrooms",
+      "minBedsLabel": "Min Beds",
+      "maxStopsLabel": "Max Stops",
+      "backBtn": "Back",
+      "nextBtn": "Next",
+      "submitBtn": "Create Subscription"
+    }
+  },
+  "settings": {
+    "title": "Account Settings",
+    "profileSection": "Profile Details",
+    "passwordSection": "Change Password",
+    "notificationsSection": "Telegram Notifications",
+    "oldPasswordLabel": "Current Password",
+    "newPasswordLabel": "New Password",
+    "confirmPasswordLabel": "Confirm New Password",
+    "saveProfileBtn": "Save Profile",
+    "changePasswordBtn": "Change Password",
+    "connectTelegramBtn": "Connect Telegram",
+    "confirmTelegramBtn": "I connected Telegram",
+    "telegramConnected": "Telegram Connected",
+    "telegramNotConnectedYet": "Not connected yet — please click start in Telegram and try again."
+  },
+  "common": {
+    "loading": "Loading...",
+    "errorGeneric": "Something went wrong. Please try again.",
+    "viewListing": "View listing"
+  }
+}

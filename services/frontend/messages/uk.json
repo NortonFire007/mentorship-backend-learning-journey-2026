@@ -1,0 +1,96 @@
+{
+  "nav": {
+    "dashboard": "Панель керування",
+    "newSubscription": "Нова підписка",
+    "settings": "Налаштування",
+    "logout": "Вийти"
+  },
+  "auth": {
+    "loginTitle": "З поверненням",
+    "loginSubtitle": "Увійдіть для керування вашими сповіщеннями про ціни",
+    "registerTitle": "Створити акаунт",
+    "registerSubtitle": "Почніть відстежувати ціни на популярних платформах",
+    "emailLabel": "Електронна пошта",
+    "emailPlaceholder": "alex@example.com",
+    "passwordLabel": "Пароль",
+    "passwordPlaceholder": "••••••••",
+    "nameLabel": "Ім'я",
+    "namePlaceholder": "Олексій",
+    "surnameLabel": "Прізвище",
+    "surnamePlaceholder": "Шевченко",
+    "submitLogin": "Увійти",
+    "submitRegister": "Зареєструватися",
+    "noAccount": "Ще не маєте акаунта?",
+    "hasAccount": "Вже маєте акаунт?",
+    "signUpLink": "Зареєструватися",
+    "signInLink": "Увійти",
+    "invalidCredentials": "Невірний email або пароль",
+    "emailInUse": "Цей email вже використовується"
+  },
+  "dashboard": {
+    "title": "Підписки на поїздки",
+    "subtitle": "Активні конфігурації сповіщень та нещодавно знайдені ціни",
+    "newSubscriptionBtn": "Нова підписка",
+    "activeSubscriptions": "Активні підписки",
+    "noSubscriptionsTitle": "Підписок ще немає",
+    "noSubscriptionsDesc": "Створіть першу підписку, щоб почати відстеження знижок.",
+    "recentAlerts": "Останні сповіщення",
+    "noAlertsTitle": "Сповіщень ще немає",
+    "noAlertsDesc": "Платформа автоматично шукає пропозиції, і сповіщення з'являться тут."
+  },
+  "subscription": {
+    "card": {
+      "active": "Активна",
+      "paused": "Призупинена",
+      "pauseBtn": "Призупинити",
+      "activateBtn": "Активувати",
+      "deleteBtn": "Видалити",
+      "deleteConfirmTitle": "Видалити підписку?",
+      "deleteConfirmDesc": "Цю дію неможливо скасувати. Ви перестанете отримувати сповіщення для цього напрямку.",
+      "confirm": "Підтвердити видалення",
+      "cancel": "Скасувати"
+    },
+    "wizard": {
+      "step1Title": "Куди та що",
+      "step2Title": "Коли та хто",
+      "step3Title": "Бюджет та фільтри",
+      "destinationLabel": "Напрямок",
+      "destinationPlaceholder": "напр. Париж, Франція або Рим",
+      "travelTypeLabel": "Тип поїздки",
+      "providerLabel": "Провайдер",
+      "dateRangeLabel": "Дати (опціонально)",
+      "adultsLabel": "Дорослі",
+      "childrenLabel": "Діти",
+      "flexibleDaysLabel": "Гнучкі дні",
+      "maxPriceLabel": "Макс. ціна",
+      "currencyLabel": "Валюта",
+      "advancedFilters": "Розширені фільтри",
+      "minBedroomsLabel": "Мін. спалень",
+      "minBedsLabel": "Мін. ліжок",
+      "maxStopsLabel": "Макс. пересадок",
+      "backBtn": "Назад",
+      "nextBtn": "Далі",
+      "submitBtn": "Створити підписку"
+    }
+  },
+  "settings": {
+    "title": "Налаштування акаунта",
+    "profileSection": "Профіль",
+    "passwordSection": "Зміна пароля",
+    "notificationsSection": "Telegram сповіщення",
+    "oldPasswordLabel": "Поточний пароль",
+    "newPasswordLabel": "Новий пароль",
+    "confirmPasswordLabel": "Підтвердіть новий пароль",
+    "saveProfileBtn": "Зберегти профіль",
+    "changePasswordBtn": "Змінити пароль",
+    "connectTelegramBtn": "Підключити Telegram",
+    "confirmTelegramBtn": "Я підключив Telegram",
+    "telegramConnected": "Telegram підключено",
+    "telegramNotConnectedYet": "Ще не підключено — натисніть /start у боті та спробуйте знову."
+  },
+  "common": {
+    "loading": "Завантаження...",
+    "errorGeneric": "Щось пішло не так. Спробуйте ще раз.",
+    "viewListing": "Переглянути оголошення"
+  }
+}
