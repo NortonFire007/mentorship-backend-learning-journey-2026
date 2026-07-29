@@ -5,7 +5,9 @@ Event-driven Alerts Platform. Users manage subscriptions via FastAPI, while back
 ## Project Structure
 
 - `services/api`: FastAPI application with asynchronous database support.
-- `docker-compose.yml`: Local infrastructure setup (PostgreSQL + API).
+- `services/bot`: Telegram notification bot (`aiogram`).
+- `services/frontend`: Next.js 16 App Router web application.
+- `docker-compose.yml`: Local infrastructure setup (PostgreSQL, Redis, RabbitMQ, API, Workers, Bot, Frontend).
 
 ## Getting Started
 
@@ -81,9 +83,12 @@ docker compose up --build
 
 Once the application is running, you can access:
 
+- **Frontend Web App**: [http://localhost:3000](http://localhost:3000)
 - **API Base**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 - **Interactive API Docs (Swagger)**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 - **Health Check**: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
+
+> **Note on CORS**: Ensure `CORS_ALLOWED_ORIGINS` in `.env` contains `http://localhost:3000` so client-side browser requests from the frontend app are permitted by the FastAPI backend.
 
 ---
 
