@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
+import { useCallback } from "react";
 import {
   fetchCurrentUser,
   loginUser,
@@ -61,7 +62,7 @@ export function useAuth() {
     },
   });
 
-  const silentRefresh = async () => {
+  const silentRefresh = useCallback(async () => {
     try {
       const tokenResponse = await refreshAuthToken();
       useAuthStore.getState().setAccessToken(tokenResponse.access_token);
@@ -72,7 +73,7 @@ export function useAuth() {
       clearAuth();
       return null;
     }
-  };
+  }, [setAuth, clearAuth]);
 
   return {
     login: loginMutation.mutateAsync,
