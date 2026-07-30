@@ -16,6 +16,30 @@ from src.domains.users.models import User
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
+COOKIE_PATH = "/api/v1/auth"
+
+
+def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite="lax" if settings.DEBUG else "strict",
+        path=COOKIE_PATH,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key="refresh_token",
+        path=COOKIE_PATH,
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite="lax" if settings.DEBUG else "strict",
+    )
+
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 async def register(
@@ -52,15 +76,7 @@ async def login(
         ip_address=ip_address,
     )
 
-    response.set_cookie(
-        key="refresh_token",
-        value=token_pair.refresh_token,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        path="/api/v1/auth",
-        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
-    )
+    _set_refresh_cookie(response, token_pair.refresh_token)
 
     return TokenResponse(
         access_token=token_pair.access_token,
@@ -90,28 +106,24 @@ async def refresh(
     user_agent = request.headers.get("user-agent")
     ip_address = request.client.host if request.client else None
 
-    token_pair = await service.refresh(
-        refresh_token_str=refresh_token,
-        redis_client=redis,
-        user_agent=user_agent,
-        ip_address=ip_address,
-    )
+    try:
+        token_pair = await service.refresh(
+            refresh_token_str=refresh_token,
+            redis_client=redis,
+            user_agent=user_agent,
+            ip_address=ip_address,
+        )
 
-    response.set_cookie(
-        key="refresh_token",
-        value=token_pair.refresh_token,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        path="/api/v1/auth",
-        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
-    )
+        _set_refresh_cookie(response, token_pair.refresh_token)
 
-    return TokenResponse(
-        access_token=token_pair.access_token,
-        token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
+        return TokenResponse(
+            access_token=token_pair.access_token,
+            token_type="bearer",
+            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
+    except HTTPException:
+        _clear_refresh_cookie(response)
+        raise
 
 
 @router.post("/logout", status_code=status.HTTP_200_OK)
@@ -138,7 +150,7 @@ async def logout(
         redis_client=redis,
     )
 
-    response.delete_cookie(key="refresh_token", path="/api/v1/auth")
+    _clear_refresh_cookie(response)
     return {"detail": "Successfully logged out"}
 
 
@@ -165,7 +177,7 @@ async def logout_all(
         redis_client=redis,
     )
 
-    response.delete_cookie(key="refresh_token", path="/api/v1/auth")
+    _clear_refresh_cookie(response)
     return {"detail": "Successfully logged out from all devices"}
 
 
@@ -175,4 +187,3 @@ async def get_me(current_user: User = Depends(get_current_user)):
     Get the profile of the currently authenticated user.
     """
     return current_user
-

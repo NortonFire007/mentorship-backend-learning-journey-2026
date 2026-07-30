@@ -14,6 +14,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
+import { useAuth } from "../../hooks/useAuth";
 import { useAuthStore } from "../../stores/authStore";
 import { useUiStore } from "../../stores/uiStore";
 import { Toggle } from "../ui/Toggle";
@@ -29,7 +30,8 @@ export function AppShell({ children }: AppShellProps) {
   const currentLocale = useLocale();
 
   const { theme, setTheme } = useUiStore();
-  const { clearAuth, user } = useAuthStore();
+  const { user } = useAuthStore();
+  const { logout } = useAuth();
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -38,14 +40,12 @@ export function AppShell({ children }: AppShellProps) {
 
   const switchLocale = () => {
     const nextLocale = currentLocale === "en" ? "uk" : "en";
-    // Replace current locale prefix in pathname (e.g., /en/dashboard -> /uk/dashboard)
     const newPath = pathname.replace(`/${currentLocale}`, `/${nextLocale}`);
     router.push(newPath);
   };
 
-  const handleLogout = () => {
-    clearAuth();
-    router.push(`/${currentLocale}/login`);
+  const handleLogout = async () => {
+    await logout();
   };
 
   const navItems = [
