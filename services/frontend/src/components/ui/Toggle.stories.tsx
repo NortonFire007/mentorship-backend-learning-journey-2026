@@ -1,4 +1,4 @@
-напиш комит нimport type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import { Moon } from "lucide-react";
 import { Toggle } from "./Toggle";
 
