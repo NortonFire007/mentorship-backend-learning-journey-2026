@@ -14,6 +14,7 @@ class AlertStatus(str, enum.Enum):
     PENDING = "pending"
     SENT = "sent"
     FAILED = "failed"
+    SKIPPED = "skipped"
 
 class SearchRunStatus(str, enum.Enum):
     PENDING = "PENDING"

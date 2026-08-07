@@ -13,7 +13,7 @@ class UserBase(BaseModel):
     surname: str
     email: EmailStr
     preferred_currency: CurrencyEnum = CurrencyEnum.USD
-    telegram_id: str | None = None
+    telegram_chat_id: int | None = None
 
 class UserCreate(UserBase):
     """
@@ -29,7 +29,7 @@ class UserUpdate(BaseModel):
     surname: str | None = None
     email: EmailStr | None = None
     preferred_currency: CurrencyEnum | None = None
-    telegram_id: str | None = None
+    telegram_chat_id: int | None = None
 
 class UserRead(UserBase):
     """
@@ -69,5 +69,13 @@ class UserPasswordChange(BaseModel):
     """
     old_password: str
     new_password: PasswordStr
+
+
+class TelegramLinkResponse(BaseModel):
+    """
+    Schema for the response of generating a Telegram linking token.
+    """
+    link: str
+    expires_in_seconds: int
 
 

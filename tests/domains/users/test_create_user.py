@@ -12,7 +12,7 @@ async def test_create_user_success(superuser_client: AsyncClient):
         "name": "Jane",
         "surname": "Doe",
         "email": "jane.doe@example.com",
-        "telegram_id": "12345678",
+        "telegram_chat_id": 12345678,
         "password": "Password123!"
     }
 

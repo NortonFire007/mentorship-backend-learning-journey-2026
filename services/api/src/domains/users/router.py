@@ -8,6 +8,7 @@ from src.domains.users.schemas import (
     UserWithSubscriptionsRead,
     UserActiveCountRead,
     UserPasswordChange,
+    TelegramLinkResponse,
 )
 from src.domains.users.service import UserService
 from src.domains.users.dependencies import get_user_service, get_user_profile_access, get_user_profile_edit_access
@@ -83,4 +84,21 @@ async def change_password_endpoint(
     Revokes all active sessions for this user.
     """
     await service.change_password(user_id, password_data, redis_client=redis)
+
+
+@router.post("/{user_id}/telegram/link-start", response_model=TelegramLinkResponse)
+async def generate_telegram_link_endpoint(
+    user_id: uuid.UUID = Depends(get_user_profile_edit_access),
+    service: UserService = Depends(get_user_service),
+    redis: Redis = Depends(get_redis),
+):
+    """
+    Generate a Telegram deep linking URL for the specified user.
+    Only the account owner or a superuser can call this endpoint.
+    """
+    # Ensure user exists (raises 404 if not found)
+    await service.get_user_by_id(user_id)
+    
+    link = await service.generate_telegram_link(user_id, redis)
+    return TelegramLinkResponse(link=link, expires_in_seconds=900)
 
