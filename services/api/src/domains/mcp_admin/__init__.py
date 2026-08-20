@@ -1,0 +1,3 @@
+"""
+MCP Admin module.
+"""

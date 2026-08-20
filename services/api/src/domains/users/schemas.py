@@ -37,7 +37,10 @@ class UserRead(UserBase):
     """
     id: uuid.UUID
     is_active: bool
+    is_superuser: bool = False
+    is_verified: bool = False
     created_at: datetime
+
 
     @computed_field
     @property

@@ -48,6 +48,24 @@ class SearchRunRepository:
         )
         return result.scalar_one_or_none()
 
+    async def list_by_subscription_id(
+        self,
+        subscription_id: uuid.UUID,
+        limit: int = 10
+    ) -> list[SearchRun]:
+        """
+        Retrieve search runs for a specific subscription ordered by created_at descending.
+        """
+        stmt = (
+            select(SearchRun)
+            .where(SearchRun.subscription_id == subscription_id)
+            .order_by(SearchRun.created_at.desc())
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+
     async def list_stale_pending(self, older_than_minutes: int = 60) -> List[SearchRun]:
         """
         Retrieve all pending search runs created more than `older_than_minutes` ago.
