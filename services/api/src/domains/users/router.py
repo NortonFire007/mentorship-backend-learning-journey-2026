@@ -14,8 +14,10 @@ from src.domains.users.service import UserService
 from src.domains.users.dependencies import get_user_service, get_user_profile_access, get_user_profile_edit_access
 from src.domains.users.models import User
 from src.domains.auth.dependencies import get_current_superuser, get_redis
+from src.core.config import settings
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
 
 @router.post("/", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 async def create_user_endpoint(
@@ -49,7 +51,18 @@ async def list_users_endpoint(
     """
     return await service.get_all_users_with_subscriptions()
 
+@router.get("/mcp-token")
+async def get_mcp_token_endpoint(
+    current_superuser: User = Depends(get_current_superuser),
+) -> dict[str, str]:
+    """
+    Retrieve the static MCP_API_KEY.
+    Requires superuser privileges.
+    """
+    return {"mcp_token": settings.MCP_API_KEY}
+
 @router.get("/{user_id}", response_model=UserWithSubscriptionsRead)
+
 async def get_user_endpoint(
     user_id: uuid.UUID = Depends(get_user_profile_access),
     service: UserService = Depends(get_user_service),

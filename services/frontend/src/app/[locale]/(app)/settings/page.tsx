@@ -6,6 +6,7 @@ import { Lock, User } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { TelegramConnectBlock } from "../../../../components/features/telegram/TelegramConnectBlock";
+import { McpTokenBlock } from "../../../../components/features/mcp/McpTokenBlock";
 import { Button } from "../../../../components/ui/Button";
 import { Input } from "../../../../components/ui/Input";
 import { Select } from "../../../../components/ui/Select";
@@ -123,6 +124,16 @@ export default function SettingsPage() {
         </h2>
         <TelegramConnectBlock />
       </div>
+
+      {/* MCP Admin Access Section for Superusers */}
+      {user?.is_superuser && (
+        <div className="space-y-3">
+          <h2 className="text-base font-semibold text-foreground">
+            Admin & AI Integrations
+          </h2>
+          <McpTokenBlock />
+        </div>
+      )}
 
       {/* Profile Form Section */}
       <div className="rounded-xl border border-border bg-surface p-6 space-y-4">

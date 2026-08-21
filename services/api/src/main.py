@@ -17,6 +17,12 @@ from src.db.init_db import create_first_superuser
 
 from src.core.security.redis_auth import get_redis_client, close_redis
 
+# MCP Admin Server Initialization and Tool Registration (Order is critical!)
+from src.domains.mcp_admin.server import mcp
+import src.domains.mcp_admin.tools.users  # noqa: F401
+import src.domains.mcp_admin.tools.parsers  # noqa: F401
+
+
 
 # Initialize Taskiq Dashboard (instantiated early so it is available in lifespan)
 dashboard = TaskiqDashboard(
@@ -50,7 +56,8 @@ async def lifespan(app: FastAPI):
     # fires WORKER_STARTUP events again → re-entering this lifespan → infinite recursion.
     if not broker.is_worker_process:
         async with dashboard.application.router.lifespan_context(dashboard.application):
-            yield
+            async with mcp.session_manager.run():
+                yield
     else:
         yield
 
@@ -80,6 +87,8 @@ app.add_middleware(
 )
 
 app.mount(settings.TASKIQ_DASHBOARD_PATH, dashboard.application)
+app.mount("/mcp", mcp.get_asgi_app())
+
 
 app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(users_router, prefix=settings.API_V1_STR)

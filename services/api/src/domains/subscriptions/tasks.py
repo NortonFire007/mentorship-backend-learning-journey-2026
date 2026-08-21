@@ -20,6 +20,7 @@ from src.domains.alerts.models import Alert
 from src.domains.alerts.repository import AlertRepository
 from src.domains.alerts.service import AlertService
 from src.domains.alerts.schemas import AlertCreate
+from src.domains.search_runs.models import SearchRun
 from src.domains.search_runs.repository import SearchRunRepository
 from src.adapters.registry import get_adapter
 
@@ -370,6 +371,76 @@ async def poll_all_active_subscriptions_task(
                 f"Error dispatching price check for subscription {sub.id} (provider: {sub.provider}): {str(e)}",
                 exc_info=True
             )
+
+
+@broker.task(
+    task_name="trigger_subscription_sync",
+    retry_on_error=True,
+    max_retries=3,
+)
+async def trigger_subscription_sync_task(
+    subscription_id: uuid.UUID,
+    db: AsyncSession = TaskiqDepends(get_db)
+) -> None:
+    """
+    On-demand sync task for a single subscription.
+    Loads subscription, checks for existing PENDING SearchRun, dispatches job via provider adapter,
+    and creates a new SearchRun record in PENDING status.
+    """
+    logger.info(f"Starting on-demand sync task for subscription {subscription_id}...")
+
+    # 1. Load subscription
+    stmt = select(Subscription).where(Subscription.id == subscription_id)
+    res = await db.execute(stmt)
+    subscription = res.scalar_one_or_none()
+
+    if not subscription:
+        logger.warning(f"Subscription {subscription_id} not found for on-demand sync task.")
+        return
+
+    if not subscription.provider:
+        logger.warning(f"Subscription {subscription_id} has no provider configured. Skipping sync.")
+        return
+
+    # 2. Check for existing PENDING SearchRun
+    pending_stmt = select(SearchRun).where(
+        SearchRun.subscription_id == subscription_id,
+        SearchRun.status == SearchRunStatus.PENDING
+    )
+    pending_res = await db.execute(pending_stmt)
+    if pending_res.scalars().first():
+        logger.warning(
+            f"Subscription {subscription_id} already has a PENDING SearchRun. Proceeding with on-demand dispatch anyway."
+        )
+
+    # 3. Resolve adapter & dispatch
+    try:
+        adapter = get_adapter(subscription.provider)
+    except ValueError as e:
+        logger.error(f"Failed to get adapter for provider '{subscription.provider}': {e}")
+        return
+
+    if adapter.execution_mode != "async_webhook":
+        logger.warning(
+            f"Unsupported execution mode '{adapter.execution_mode}' for provider '{subscription.provider}' on subscription {subscription.id}."
+        )
+        return
+
+    logger.info(f"Dispatching sync job for subscription {subscription.id} via provider {subscription.provider}...")
+    external_run_id = await adapter.dispatch(subscription)
+
+    # 4. Create SearchRun in PENDING status
+    search_run_repo = SearchRunRepository(db)
+    await search_run_repo.create(
+        subscription_id=subscription.id,
+        provider=subscription.provider,
+        external_run_id=external_run_id
+    )
+    await db.commit()
+    logger.info(
+        f"Successfully dispatched subscription {subscription.id}. SearchRun external ID: {external_run_id}"
+    )
+
 
 
 
