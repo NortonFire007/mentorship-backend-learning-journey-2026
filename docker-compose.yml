@@ -231,10 +231,22 @@ services:
       - .env
     command: python -m src.bot.main
 
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+    container_name: mentorship_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
     name: mentorship_postgres_data
   redis_data:
     name: mentorship_redis_data
-
-
